@@ -7,6 +7,13 @@ burn_in = 0.00001;
 end_proportion =  0.75;
 resolution = 5000;
 
+% Remove columns with all NaN values
+columns_with_zeros = all(Left_Data==0);  % Identify columns that are entirely NaN
+Left_Data = Left_Data(:, ~columns_with_zeros);       % Remove those columns
+retained_indices = find(~columns_with_zeros);
+
+
+
 [Torque, Torque_Time, ~] = preprocess(Load_Data, burn_in, end_proportion);
 [EIT,EIT_Time, retained_indices] = preprocess(Left_Data, burn_in,end_proportion);
 [ Torque_Interp, EIT_Interp, Time] = interpolate_data(Torque_Time, Torque, EIT_Time, EIT, resolution, false);
@@ -16,12 +23,8 @@ Time = Time-Time(1);
 figure()
 plotLine(Torque_Interp, Time); %Time of torque is 0.00403555 index 495-504 corresponding to index 845 - 862
 figure();
-clipped_data = clip(Left_Data(861,2:end),0,0.45);
-clipped_data_hom = clip(Left_Data(end,2:end),0,0.45);
-plot(clipped_data);
-plot(Left_Data(:,2:end))
-save("SavedVariables\TorqueSliceHom.mat",'clipped_data_hom')
-save("SavedVariables\TorqueSlice.mat",'clipped_data')
+plot(clip(sum(Left_Data(845:861,2:end),1),0,7));
+sa
 
 
 %save("topChannels_corr.mat", "sorted_indices")

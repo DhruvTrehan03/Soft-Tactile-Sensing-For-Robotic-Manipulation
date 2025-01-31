@@ -1,7 +1,7 @@
 % Main Script
 clear
 run('Source/eidors-v3.11-ng/eidors/eidors_startup.m'); % Initialize EIDORS
-
+figure();
 height = 0;
 width = 4.4;
 len = 3.6;
@@ -14,7 +14,7 @@ elec_pos  = [32,1.1];
 elec_shape = 0.2; 
 
 mdl = ng_mk_extruded_model(trunk_shape, elec_pos, elec_shape);
-stim =  mk_stim_patterns(32,1,[0,16],[0,1],{'no_meas_current'},1);
+stim =  mk_stim_patterns(32,1,[0,16],[0,1],{'no_meas_current'}, 5);
 
 plain = mk_image(mdl,1,'Hi');
 plain.fwd_model.stimulation = stim;
@@ -38,11 +38,11 @@ common_colourbar([h1,h2],press);
 subplot(3,2,3);
 plain_data = fwd_solve(plain);
 press_data = fwd_solve(press);
-plot(plain_data.meas,'b')
+plot(abs(plain_data.meas),'b')
 title('No Press Electrodes')
 subplot(3,2,4);
-plot(press_data.meas,'b')
+plot(abs(press_data.meas),'b')
 title('Press Electrodes')
 subplot(3,2,[5,6]);
-plot(press_data.meas-plain_data.meas)
+plot(abs(press_data.meas-plain_data.meas))
 title('Electrodes Diff')

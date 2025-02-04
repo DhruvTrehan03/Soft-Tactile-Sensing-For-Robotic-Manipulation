@@ -2,83 +2,87 @@
 
 clear
 
-device1 = serialport("COM13", 115200);
-device1.Timeout = 25;
+% Prompt user to select which devices to initialize
+init_left = input('Initialize Left (COM13)? (1 for yes, 0 for no): ');
+init_right = input('Initialize Right (COM14)? (1 for yes, 0 for no): ');
+init_truth = input('Initialize Truth (COM15)? (1 for yes, 0 for no): ');
 
-device2 = serialport("COM14", 115200);
-device2.Timeout = 25;
+% Initialize selected devices
+if init_left
+    left = serialport("COM13", 115200);
+    left.Timeout = 25;
+end
+if init_right
+    right = serialport("COM14", 115200);
+    right.Timeout = 25;
+end
+if init_truth
+    truth = serialport("COM15", 115200);
+    truth.Timeout = 25;
+end
 
-device3 = serialport("COM15", 115200);
-device3.Timeout = 25;
-
-device1.write("y", "string");
-device2.write("y", "string");
+% Send initialization command to active devices
+if init_left, left.write("y", "string"); end
+if init_right, right.write("y", "string"); end
 
 % Get the current time to create unique file names
-current_time = datetime('now', 'Format', 'yyyyMMdd_HHmmss');  % Current time with format YYYYMMDD_HHMMSS
-
-% Convert the datetime object to a string for the file name
+current_time = datetime('now', 'Format', 'yyyy-MM-dd_HH-mm-ss');  % Current time with format YYYYMMDD_HHMMSS
 time_str = char(current_time);
 
 % Specify the directory to save the data
-save_dir = ['C:\Users\dhruv\4th Year Project\MATLAB\Large_Data\',time_str];
+save_dir = ['C:\Users\dhruv\Soft-Tactile-Sensing-For-Robotic-Manipulation\Readings\', time_str];
 mkdir(save_dir)
 
-
 % Initialize data buffers
-for i=1:1
+for i = 1:1
     current_time = datenum(datetime('now', 'Format', 'HH:mm:ss.SSS'));
-    data1 = str2num(readline(device1));
-    data2 = str2num(readline(device2));
-    data3 = str2num(readline(device3));
-    i;
+    if init_left, data_left = str2num(readline(left)); end
+    if init_right, data_right = str2num(readline(right)); end
+    if init_truth, data_truth = str2num(readline(truth)); end
 end
 
-plotthis1 = [current_time,data1];
-plotthis2 = [current_time,data2];
-plotthis3 = [current_time,data3];
+if init_left, plotthis_left = [current_time, data_left]; end
+if init_right, plotthis_right = [current_time, data_right]; end
+if init_truth, plotthis_truth = [current_time, data_truth]; end
+
 % Number of readings to capture
-n = 150;
+n = input("What value of n (readings)? ");
 
 for i = 1:n
     disp(i);
-    % Read data from devices
-    data1 = str2num(readline(device1));
-    data2 = str2num(readline(device2));
-    data3 = str2num(readline(device3));
+    
+    % Read data from active devices
+    if init_left, data_left = str2num(readline(left)); end
+    if init_right, data_right = str2num(readline(right)); end
+    if init_truth, data_truth = str2num(readline(truth)); end
     
     % Get the current time for this reading
+    current_time = datenum(datetime('now', 'Format', 'HH:mm:ss.SSS'));
     
-    
-    % Process data if not empty and append time at the same time
-    if ~isempty(data1)
-        current_time = datenum(datetime('now', 'Format', 'HH:mm:ss.SSS'));
-        data1 = [current_time,data1];
-        plotthis1 = [plotthis1; data1]; % Append new data to plotthis1
+    % Process and append data if available
+    if init_left && ~isempty(data_left)
+        data_left = [current_time, data_left];
+        plotthis_left = [plotthis_left; data_left];
     end
-    if ~isempty(data2)
-        current_time = datenum(datetime('now', 'Format', 'HH:mm:ss.SSS'));
-        data2 = [current_time,data2];
-        plotthis2 = [plotthis2; data2]; % Append new data to plotthis2
+    if init_right && ~isempty(data_right)
+        data_right = [current_time, data_right];
+        plotthis_right = [plotthis_right; data_right];
     end
-    if ~isempty(data3)
-        current_time = datenum(datetime('now', 'Format', 'HH:mm:ss.SSS'));
-        data3 = [current_time,data3]; 
-        plotthis3 = [plotthis3; data3]; % Append new data to plotthis3 
+    if init_truth && ~isempty(data_truth)
+        data_truth = [current_time, data_truth];
+        plotthis_truth = [plotthis_truth; data_truth];
     end
-    
-    % Optionally, save time_log for debugging
-    time_log(i) = current_time; % Store time for each reading
+
+    % Store time for each reading
+    time_log(i) = current_time;
 end
 
+% Save data only for initialized devices
+if init_left, save(fullfile(save_dir, 'left.mat'), 'plotthis_left'); end
+if init_right, save(fullfile(save_dir, 'right.mat'), 'plotthis_right'); end
+if init_truth, save(fullfile(save_dir, 'truth.mat'), 'plotthis_truth'); end
 
-% Add the time_log as the first column of each plotthis data and save
-
-save(fullfile(save_dir, ['left.mat']), 'plotthis1');
-
-save(fullfile(save_dir, ['right.mat']), 'plotthis2');
-
-save(fullfile(save_dir, ['load.mat']), 'plotthis3');
-
-% Clear devices
-clear device1, clear device2, clear device3
+% Clear initialized devices
+if init_left, clear left; end
+if init_right, clear right; end
+if init_truth, clear truth; end

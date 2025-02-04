@@ -1,9 +1,17 @@
 % Main Script
-% clear
+figure()
+subplot(3,1,1)
+plot(data_hom)
+subplot(3,1,2)
+plot(data_objs)
+subplot(3,1,3)
+plot(abs(data_objs-data_hom))
+
+clear
 % [data_hom, data_objs]= data_slice();
 % run('Source/eidors-v3.11-ng/eidors/eidors_startup.m'); % Initialize EIDORS
-% data_objs = load("SavedVariables\TorqueSlice.mat").clipped_data';
-% data_hom = load("SavedVariables\TorqueSliceHom.mat").clipped_data_hom';
+data_objs = load("SavedVariables\TorqueSlice.mat").clipped_data';
+data_hom = load("SavedVariables\TorqueSliceHom.mat").clipped_data_hom';
 mdl = load("Simulation\Model.mat","mdl").mdl;
 
 
@@ -31,7 +39,7 @@ imdl.fwd_model= mdl_2d;
 %inv2d.fwd_model.np_fwd_solve.perm_sym= '{y}';
 imdl.parameters.term_tolerance= 1e-4;
 
-imdl = hyperparameter(imdl,7);
+imdl = hyperparameter(imdl,3);
 
 imdl.name= 'dsh_rect'; 
 imdl= eidors_obj('inv_model', imdl);
@@ -48,7 +56,18 @@ function [data_homg, data_objs] = data_slice()
     [selected_file,location] = uigetfile('C:\\Users\\dhruv\\Soft-Tactile-Sensing-For-Robotic-Manipulation\\Readings\\', 'Select a directory containing .mat files');
     if selected_file ~= 0  % Check if the user didn't cancel the dialog
        file_name = fullfile(location,selected_file);
-       data = load(file_name).Left_Data;
+       disp(file_name)
+       data = load(file_name);
+       % Get all variable names stored in the .mat file
+        varNames = fieldnames(data);
+
+        % If there is only one variable in the file, extract it
+        if isscalar(varNames)
+            data = data.(varNames{1});
+        else
+            error('Multiple variables found in the file. Specify which one to use.');
+        end
+
     else
         disp('No directory was selected.');
     end
@@ -76,8 +95,8 @@ function[inv2d] =hyperparameter(inv2d,n)
     elseif n==3
         % case 3
         inv2d.hyperparameter.func = @choose_noise_figure;
-        inv2d.hyperparameter.noise_figure= 2;
-        inv2d.hyperparameter.tgt_elems= 1:4;
+        inv2d.hyperparameter.noise_figure=2;
+        inv2d.hyperparameter.tgt_elems= 1:6;
         inv2d.RtR_prior=   'prior_gaussian_HPF';
         inv2d.solve=       'inv_solve_diff_GN_one_step';
     elseif n==31

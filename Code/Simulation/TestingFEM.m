@@ -24,10 +24,10 @@ title('No Press')
 press = plain;
 
 centre = 1.8;
-sigma = 0.6;
+sigma = 1;
 % select_fcn = inline('(x-2.2).^2+(y-1.8).^2<0.4^2','x','y','z');
-% select_fcn = @(x, y, z) -(y - centre) .* exp(-((y - centre).^2) / (2 * sigma^2)) / (sigma^2);
-select_fcn = @(x,y,z) 0.5.*(y>1.8) -0.5.*(y<=1.8) ;
+select_fcn = @(x, y, z) -(y - centre) .* exp(-((y - centre).^2) / (2 * sigma^2)) / (sigma^2);
+%select_fcn = @(x,y,z) 0.5.*(y>1.8) -0.5.*(y<=1.8) ;
 press.elem_data = 1 + elem_select(press.fwd_model, select_fcn);
 press.fwd_model.stimulation = stim;
 

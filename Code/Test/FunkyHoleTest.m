@@ -1,16 +1,16 @@
+run('Source/eidors-v3.11-ng/eidors/eidors_startup.m'); % Initialize EIDORS
+
 N_elec = 8;
-shape_str = ['solid incyl  = cylinder (0,0.5,0.5; 1,0.5,0.5; 0.1) -maxh=1.0; \n', ...
-             'solid farcyl = cylinder (0,0,0; 1,0,0; 5) -maxh=5.0; \n' ...
-             'solid pl1    =  plane(-1,0,0;-1,0,0);\n' ...
-             'solid pl2    =  plane(1,0,0; 1,0,0);\n' ...
-             'solid mainobj= pl1 and pl2 and farcyl and not incyl;\n'];
+offset = input('Offset');
+shape_str = sprintf(['solid incyl  = cylinder (0,%.2f,0; 1,%.2f,0; 1) -maxh=1.0; \n', ...
+                     'solid farcyl = cylinder (0,0,0; 1,0,0; 5) -maxh=5.0; \n' ...
+                     'solid pl1    =  plane(-1,0,0;-1,0,0);\n' ...
+                     'solid pl2    =  plane(1,0,0; 1,0,0);\n' ...
+                     'solid mainobj= pl1 and pl2 and farcyl and not incyl;\n'], offset, offset);
 th= linspace(0,2*pi,N_elec+1)'; th(end)=[];
-cth= 0.5+cos(th); sth= 0.5 + sin(th); zth= zeros(size(th));
-elec_pos = [zth, cth, sth, zth cth, sth];
+cth= offset+cos(th); sth= sin(th); zth= zeros(size(th));
+elec_pos = [zth, cth, sth, zth, cth, sth];
 elec_shape= 0.001;
-% Hello Dhruv this is Parth
-% I am very hungry rn
-% make me some dopiaza pls
 elec_obj = 'incyl';
 fmdl = ng_mk_gen_models(shape_str, elec_pos, elec_shape, elec_obj);
 show_fem( fmdl );

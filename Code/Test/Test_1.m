@@ -1,7 +1,8 @@
-centre = 1.5;
-sigma = 0.3;
+centre = 1.8;
+sigma = 0.2;
+scale = 0.1;
 k=10;
-y= linspace(0,3,100);
-select_fcn = exp(-(y - centre).^2 / (2 * sigma^2)) .*(cos(k * (y-centre)));
-hold on;
-plot(select_fcn)
+
+
+select_fcn = @(x,y,z) exp(-(y - centre).^2 / (2 * sigma^2)) .*(scale * cos(k * (y-centre)));
+plot(select_fcn(0,linspace(0,3.6,100),0))

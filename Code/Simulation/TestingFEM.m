@@ -1,17 +1,25 @@
-
-clear
 %% Toggle Settings
-initialise = false;
-load_data = fasle;       % Set to true to reload data
-find_shift = false;      % Set to true to find the best shift
-generate_model = false;  % Set to true to generate the EIDORS model
-show_first_three_subplots = false; % Set to false to hide first 3 subplots
-function_choice = "modulated gaussian"; % Choose function: "differential of a gaussian", "step", "linear", "modulated gaussian"
+
+initialise = 0;
+load_data = 0;       % Set to true to reload data
+find_shift = 0;      % Set to true to find the best shift
+generate_model = 0;  % Set to true to generate the EIDORS model
+show_first_three_subplots = 0; % Set to false to hide first 3 subplots
+function_choice = "linear"; % Choose function: "differential of a gaussian", "step", "linear", "modulated gaussian"
+
+
 
 %% Initialise EIDORS (Only really need to do this the first time you run eacch session)
+
 if initialise
+    clear
+    load_data = 1;       % Set to true to reload data
+    find_shift = 0;      % Set to true to find the best shift
+    generate_model = 1;  % Set to true to generate the EIDORS model
+    show_first_three_subplots = 1; % Set to false to hide first 3 subplots
     run('Source/eidors-v3.11-ng/eidors/eidors_startup.m'); % Initialize EIDOR
 end
+
 %% Load Data (Only If Needed)
 if load_data
     data_objs = load("SavedVariables\TorqueSlice.mat").clipped_data';
@@ -44,10 +52,11 @@ if generate_model
 
     mdl = ng_mk_extruded_model(trunk_shape, elec_pos, elec_shape);
     stim = mk_stim_patterns(32, 1, [0, 16], [0, 1], {'no_meas_current'}, 5);
+    
 end
 
 %% Generate Models and Apply Function
-Model_Compare = figure("Name", 'Model Comparison');
+
 
 plain = mk_image(mdl, 1, 'Hi');
 plain.fwd_model.stimulation = stim;
@@ -55,7 +64,8 @@ plain.fwd_model.stimulation = stim;
 press = plain;
 press.elem_data = 1 + apply_function(function_choice, press.fwd_model);
 press.fwd_model.stimulation = stim;
-
+show_fem(press);
+Model_Compare = figure("Name", 'Model Comparison');
 %% Plot Results
 subplot_idx = 1;
 if show_first_three_subplots
@@ -147,11 +157,15 @@ function elem_data = apply_function(choice, fwd_model)
         case "linear"
             select_fcn = @(x, y, z) (y - centre) / sigma;
         case "modulated gaussian"
+            sigma = 0.2;
             k = 10;
-            select_fcn = @(x,y,z) exp(-(y - centre).^2 / (2 * sigma^2)) .*(cos(k * (y-centre)));
+            scale = 0.1;
+            select_fcn = @(x,y,z) exp(-(y - centre).^2 / (2 * sigma^2)) .*(scale * cos(k * (y-centre)));
         otherwise
             error("Unknown function choice: %s", choice);
     end
-
+    figure()
+    plot(select_fcn(0,linspace(0,3.6,100),0))
+    figure()
     elem_data = elem_select(fwd_model, select_fcn);
 end

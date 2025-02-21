@@ -2,10 +2,10 @@
 
 initialise = 0;
 load_data = 0;       % Set to true to reload data
-find_shift = 0;      % Set to true to find the best shift
+find_shift =  1;      % Set to true to find the best shift
 generate_model = 0;  % Set to true to generate the EIDORS model
-show_first_three_subplots = 0; % Set to false to hide first 3 subplots
-function_choice = "linear"; % Choose function: "differential of a gaussian", "step", "linear", "modulated gaussian"
+show_first_three_subplots = 1; % Set to false to hide first 3 subplots
+function_choice = "modulated gaussian"; % Choose function: "differential of a gaussian", "step", "linear", "modulated gaussian"
 
 
 
@@ -33,7 +33,7 @@ end
 
 %% Find Best Shift (If Needed)
 if find_shift
-    best_shift = find_best_shift(data_diff, sim_diff, 32, 28);
+    best_shift = find_best_shift(data_diff, sim_diff, 1, 896);
     data_diff = circshift(data_diff, best_shift);
 end
 

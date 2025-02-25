@@ -1,0 +1,8 @@
+figure();
+corNames = ["Step","Linear","Gaussian Differential", "Modulated Gaussian"]; 
+corScores = [0.1808,0.1919,0.1915,0.2986];
+
+bar(corNames,corScores, 'cyan')
+
+title( "Model to Ground Truth Cross Correlation Scores")
+ylim([0,1]);

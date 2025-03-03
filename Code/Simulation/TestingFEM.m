@@ -5,8 +5,12 @@ load_data = 1;       % Set to true to reload data
 find_shift =  1;      % Set to true to find the best shift
 generate_model = 0;  % Set to true to generate the EIDORS model
 show_first_three_subplots = 0; % Set to false to hide first 3 subplots
-function_choice = "modulated gaussian"; % Choose function: "differential of a gaussian", "step", "linear", "modulated gaussian"
-
+functions = {'Step', ...                            1
+            'Linear', ...                           2
+            'Differential of a Gaussian (DoG)', ... 3
+            'Modulated Gaussian (MG)', ...          4
+            'Experimental (whatever i feel like)'}; ...                5
+function_choice = 4; 
 
 
 %% Initialise EIDORS (Only really need to do this the first time you run eacch session)
@@ -17,6 +21,12 @@ if initialise
     find_shift = 0;      % Set to true to find the best shift
     generate_model = 1;  % Set to true to generate the EIDORS model
     show_first_three_subplots = 1; % Set to false to hide first 3 subplots
+    functions = {'Step', ...                            1
+            'Linear', ...                           2
+            'Differential of a Gaussian (DoG)', ... 3
+            'Modulated Gaussian (MG)', ...          4
+            'Antisymmetric MG'}; ...                5
+    function_choice = 1; 
     run('Source/eidors-v3.11-ng/eidors/eidors_startup.m'); % Initialize EIDOR
 end
 
@@ -28,6 +38,11 @@ if load_data
     data_homg = data_homg(data_homg ~= 0); % Remove zero values
     data_diff = abs(data_objs - data_homg);
     data_diff = normalize(data_diff);
+    windowSize = 5;
+    b = (1/windowSize)*ones(1,windowSize);
+    a = 1;
+    % plot(clip(normalize(up,'center',0,'scale',1),-0.1,3))
+    data_diff = filter(b,a,data_diff);
     % Apply an additional manual shift
     % data_diff = circshift(data_diff, 10*32);
 end
@@ -37,7 +52,6 @@ if find_shift
 
     best_shift = find_best_shift(data_diff, sim_diff, 1, 896);
     data_diff = circshift(data_diff, best_shift);
-    
 end
 
 %% Model Generation (Only If Needed)
@@ -64,15 +78,17 @@ plain = mk_image(mdl, 1, 'Hi');
 plain.fwd_model.stimulation = stim;
 
 press = plain;
-press.elem_data = 1 + elem_select(press.fwd_model, apply_function(function_choice));
+press.elem_data = 1 + elem_select(press.fwd_model, apply_function((function_choice)));
 press.fwd_model.stimulation = stim;
 show_fem(press);
 Model_Compare = figure("Name", 'Model Comparison');
 %% Plot Results
+plain_data = fwd_solve(plain);
+press_data = fwd_solve(press);
 sim_diff = abs(press_data.meas - plain_data.meas);
 sim_diff = normalize(sim_diff);
 correlation = corr(data_diff, sim_diff);
-[up,lo] = envelope(sim_diff,8,'peak');
+[up,lo] = envelope(sim_diff,10,'peak');
 
 subplot_idx = 1;
 if show_first_three_subplots
@@ -89,8 +105,6 @@ if show_first_three_subplots
     subplot_idx = subplot_idx + 1;
 
     subplot(5, 2, subplot_idx);
-    plain_data = fwd_solve(plain);
-    press_data = fwd_solve(press);
     plot(abs(plain_data.meas), 'b')
     title('No Press Electrodes')
     subplot_idx = subplot_idx + 1;
@@ -101,13 +115,13 @@ if show_first_three_subplots
     subplot_idx = subplot_idx + 1;
 
     subplot(5, 2, [subplot_idx, subplot_idx + 1]);
-    plot(sim_diff)
-    title([sprintf('Electrodes Diff Sim (%s)',function_choice)])
+    plot(normalize(sim_diff,'center',0,'scale',1))
+    title([sprintf('Electrodes Diff Sim (%s)',string(functions(function_choice)))])
     
     subplot(5, 2, [subplot_idx + 2, subplot_idx + 3]);
     hold on;
-    plot(normalize(up))
-    plot(normalize(data_diff))
+    plot(clip(normalize(up,'center',0,'scale',1),-0.1,5))
+    plot(normalize(data_diff,'center',0,'scale',1))
     hold off;
     title('Electrodes Diff Real')
     
@@ -119,12 +133,12 @@ else
     subplot(3, 2, [subplot_idx, subplot_idx + 1]);
     sim_diff = abs(press_data.meas - plain_data.meas);
     plot(sim_diff)
-    title([sprintf('Electrodes Diff Sim (%s)',function_choice)])
+    title([sprintf('Electrodes Diff Sim (%s)',string(functions(function_choice)))])
     
     subplot(3, 2, [subplot_idx + 2, subplot_idx + 3]);
     hold on;
-    plot(clip(normalize(up),-0.1,3))
-    plot(normalize(data_diff))
+    % plot(clip(normalize(up,'center',0,'scale',1),-0.1,3))
+    plot(data_diff)
     hold off;
     title('Electrodes Diff Real')
     
@@ -133,7 +147,8 @@ else
     axis off;
     title({'Correlation Score'})
 end
-    plot_fem_and_cross_section(mdl,{'step','linear','differential of a gaussian','modulated gaussian'});
+%% Plot different models
+plot_fem_and_cross_section(mdl,functions);
 
 %% Function: Finding Best Shift
 function best_shift = find_best_shift(data_diff, sim_diff, shift_step, max_shifts)
@@ -159,17 +174,20 @@ function select_fcn = apply_function(choice)
     sigma = 1;
 
     switch lower(choice)
-        case "differential of a gaussian"
+        case 1      %"differential of a gaussian"
             select_fcn = @(x, y, z) -(y - centre) .* exp(-((y - centre).^2) / (2 * sigma^2)) / (sigma^2);
-        case "step"
+        case 2      %"step"
             select_fcn = @(x, y, z) 0.5 * (y > centre) - 0.5 * (y <= centre);
-        case "linear"
+        case 3      %"linear"
             select_fcn = @(x, y, z) (y - centre) / sigma;
-        case "modulated gaussian"
+        case 4      %"modulated gaussian"
+            sigma = 0.4;
+            k = 5;
+            select_fcn = @(x,y,z) exp(-(y - centre).^2 / (2 * sigma^2)) .*(cos(k * (y-centre)));
+        case 5      %modulated difference of a gaussian
             sigma = 0.2;
-            k = 10;
-            scale = 0.1;
-            select_fcn = @(x,y,z) exp(-(y - centre).^2 / (2 * sigma^2)) .*(scale * cos(k * (y-centre)));
+            k = 4;
+            select_fcn = @(x,y,z) (y>centre).*exp(-(y - centre).^2 / (2 * sigma^2)) .*(cos(k * (y-centre))) + 0.1* exp(-(y - centre).^2 / (2 * sigma^2));
         otherwise
             error("Unknown function choice: %s", choice);
     end
@@ -194,21 +212,21 @@ function plot_fem_and_cross_section(mdl, function_choices)
     x_vals = linspace(0, 4.4, 100);
     y_vals = linspace(0, 3.6, 100); % Define y-values range
     
-    for i = 1:4
+    for i = 1:num_models
         
         function_choice = function_choices{i};
-        select_fcn = apply_function(function_choice); % Get the selection function
+        select_fcn = apply_function(i); % Get the selection function
         img = mk_image(mdl, 5); % Create a homogeneous image
         img.elem_data = 5 + 10 * elem_select(img.fwd_model, select_fcn); % Apply inhomogeneity
 
         % **Top row: FEM Model**
-        subplot(2, 4, i);
+        subplot(2, num_models, i);
         show_fem(img);
         title(sprintf('FEM: %s', strrep(function_choice, '_', ' ')));
         axis tight;
 
         % **Bottom row: Cross-section plot**
-        subplot(2, 4, 4 + i);
+        subplot(2, num_models, num_models + i);
         conductivity_values = select_fcn(x_vals,y_vals,0);
         plot(y_vals, conductivity_values, 'LineWidth', 2);
         xlabel('Y Position');

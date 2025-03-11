@@ -218,3 +218,4 @@ function plot_fem_and_cross_section(mdl, function_choices)
         xlim([0,3.6]);
     end
 end
+

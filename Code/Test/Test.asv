@@ -8,9 +8,9 @@ H = 1;  % Extrusion height; change this value to vary the model height
 % Note: trunk_shape requires a CLOCKWISE ordering.
 % Outer boundary (rectangle): 4.4 (width) x 3.6 (height)
 outer_xy = [0,   0;
-            0,   3.6;
+            4.4, 0;
             4.4, 3.6;
-            4.4, 0];
+            0,   3.6];
 
 % Define two inner rectangular holes (must be in clockwise order)
 hole1_xy = [1,   1;
@@ -31,7 +31,7 @@ figure()
 
 % Build the trunk_shape cell array.
 % Format: { height, {outer_curve, inner_curve1, inner_curve2}, curve_type, maxsz }
-trunk_shape = { H, {outer_xy, hole1_xy, hole2_xy}, 1, 0.1 };
+trunk_shape = { H, {outer_xy, hole1_xy, hole2_xy], 1, 0.1 };
 
 %% Define Electrode Positions
 % Outer electrodes: use the compact syntax [n_elecs_per_plane, spacing, z_plane]

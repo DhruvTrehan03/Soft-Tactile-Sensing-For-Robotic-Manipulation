@@ -39,11 +39,6 @@
 %%
 ThreeD();
 
-
-
-
-
-
 %%
 function TwoD()
     clear
@@ -152,77 +147,4 @@ function ThreeD()
     clear
     run('Source/eidors-v3.11-ng/eidors/eidors_startup.m'); % Initialize EIDORS
     
-    %% Define the main rectangular prism (outer boundary)
-    width  = 4.4;
-    height = 3.6;
-    depth  = 2.0;
-    outer_box = [0,  0, 0;
-                 width,  0, 0;
-                 width, height, 0;
-                 0,  height, 0;
-                 0,  0, depth;
-                 width,  0, depth;
-                 width, height, depth;
-                 0,  height, depth];  % 3D box vertices
-    
-    %% Define two inner rectangular holes extending through depth
-    hole1 = [1,   1, 0;
-             1.5, 1, 0;
-             1.5, 2, 0;
-             1,   2, 0;
-             1,   1, depth;
-             1.5, 1, depth;
-             1.5, 2, depth;
-             1,   2, depth];
-
-    hole2 = [2.9, 1, 0;
-             3.4, 1, 0;
-             3.4, 2, 0;
-             2.9, 2, 0;
-             2.9, 1, depth;
-             3.4, 1, depth;
-             3.4, 2, depth;
-             2.9, 2, depth];
-    
-    %% Define the shape with holes
-    shape = {outer_box, hole1, hole2, 0.2}; % Max mesh size: 0.2
-    
-    %% Define electrodes (placed on outer faces)
-    n_elec = 16;
-    elec_pos = zeros(n_elec, 3);
-    th = linspace(0, 2*pi, n_elec+1)'; th(end) = [];
-    elec_pos(:,1) = 2.2 + cos(th);  % Centered in X
-    elec_pos(:,2) = 1.8 + sin(th);  % Centered in Y
-    elec_pos(:,3) = depth / 2;      % Middle in Z
-    elec_shape = 0.1;  % Small electrodes
-    
-    %% Generate 3D FEM model
-    fmdl = ng_mk_gen_models(shape, elec_pos, elec_shape, 'outer_box');
-    show_fem(fmdl);
-    title('3D FEM Model');
-    
-    %% Define stimulation pattern
-    stim = mk_stim_patterns(n_elec, 1, '{op}', '{ad}', {'no_meas_current'}, 10);
-    
-    %% Generate Base Model
-    plain = mk_image(fmdl, 10, 'Hi');
-    plain.fwd_model.stimulation = stim;
-    plain.fwd_solve.get_all_meas = 1;
-    plain_data = fwd_solve(plain);
-    
-    %% Introduce a perturbation (small conductive sphere)
-    r = 0.5;
-    select_fcn = @(x,y,z) ((x-2.2).^2 + (y-1.8).^2 + (z-depth/2).^2 < r^2);
-    ball = mk_image(fmdl, 1, 'Bye');
-    ball.fwd_model.stimulation = stim;
-    ball.elem_data = 10 + 0.1 * elem_select(fmdl, select_fcn);
-    ball.fwd_solve.get_all_meas = 1;
-    ball_data = fwd_solve(ball);
-    
-    %% Plot results
-    figure();
-    subplot(2,2,1); show_fem(plain); title('Base 3D FEM Model');
-    subplot(2,2,2); show_fem(ball); title('3D Model with Perturbation');
-    subplot(2,2,3); plot(plain_data.meas); title('Plain Model Data');
-    subplot(2,2,4); plot(abs(ball_data.meas - plain_data.meas)); title('Difference in Measurements');
 end

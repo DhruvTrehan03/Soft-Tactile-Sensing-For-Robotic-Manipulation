@@ -1,18 +1,17 @@
 clear;
 run('Source/eidors-v3.11-ng/eidors/eidors_startup.m');  % Initialize EIDORS
 
-%% Set variable height for extrusion (adjust H as desired)
-H = 1;  % Extrusion height; change this value to vary the model height
+%% Set variable height for extrusion (set H > 0 for a 3D extruded model, or H = 0 for 2D)
+H = 0;  % Change to H > 0 for a 3D model
 
 %% Define the 2D Shape (outer boundary and holes)
-% Note: trunk_shape requires a CLOCKWISE ordering.
-% Outer boundary (rectangle): 4.4 (width) x 3.6 (height)
+% Outer boundary (must be CLOCKWISE)
 outer_xy = [0,   0;
             0,   3.6;
             4.4, 3.6;
             4.4, 0];
 
-% Define two inner rectangular holes (must be in clockwise order)
+% Define the holes (also given in CLOCKWISE order per documentation)
 hole1_xy = [1,   1;
             1,   2;
             1.5, 2;
@@ -22,45 +21,23 @@ hole2_xy = [2.9, 1;
             2.9, 2;
             3.4, 2;
             3.4, 1];
-hold on
-plot(outer_xy(:,1),outer_xy(:,2))
-plot(hole2_xy(:,1),hole2_xy(:,2))
-plot(hole1_xy(:,1),hole1_xy(:,2))
-hold off
-figure()
 
-% Build the trunk_shape cell array.
-% Format: { height, {outer_curve, inner_curve1, inner_curve2}, curve_type, maxsz }
-trunk_shape = { H, {outer_xy, hole1_xy, hole2_xy}, 1, 0.1 };
+%% Build the trunk_shape cell array using only the outer boundary.
+% Format: { height, [x,y] (outer boundary), curve_type, maxsz }
+trunk_shape = { H, {outer_xy,hole1_xy, hole2_xy}, 1, 0.2 };
 
-%% Define Electrode Positions
-% Outer electrodes: use the compact syntax [n_elecs_per_plane, spacing, z_plane]
-% Here, 12 electrodes are evenly distributed on the outer boundary at mid-height.
-elec_pos_outer = [12, 0, H/2];
+%% Define Electrode Positions (if you do not need electrodes, leave empty)
+elec_pos = [];
 
-% For the holes, we manually specify electrode centers.
-n_elec_inner = 4;
-% Hole 1: Place 4 electrodes along one side; centers chosen in the (x,y) plane.
-elec_inner = [1.25*ones(n_elec_inner,1), linspace(1,2,n_elec_inner)',3.15*ones(n_elec_inner,1), linspace(1,2,n_elec_inner)'];
-% Hole 2: Similarly, 4 electrodes on the second hole.
+%% Define Electrode Shape (not used if elec_pos is empty)
+elec_shape = 0.1;
 
-
-% Combine electrode position definitions into a cell array.
-elec_pos = elec_inner;
-
-%% Define Electrode Shape
-% For circular electrodes, use the format:
-% elec_shape = [radius, [0, maxsz, pem, discr]]
-% Here, radius = 0.1, max element size for electrodes = 0.05,
-% pem = 0 (for the Complete Electrode Model), and discr = 0.
-elec_shape = [0.1];
-
-%% Optional extra Netgen code (if needed)
-extra_ng_code = [];
+%% Supply the holes via extra_ng_code
+extra_ng_code = { hole1_xy, hole2_xy };
 
 %% Create the Extruded Model
-[fmdl, mat_idx] = ng_mk_extruded_model(trunk_shape, elec_inner, elec_shape, extra_ng_code);
+[fmdl, mat_idx] = ng_mk_extruded_model(trunk_shape, elec_pos, elec_shape);
 
 %% Visualize the FEM Model
 show_fem(fmdl);
-title('Extruded 3D EIT Model with Variable Height');
+title('Extruded Model: Outer Boundary with Excluded Holes');

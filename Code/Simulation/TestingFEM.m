@@ -3,14 +3,8 @@
 initialise = 0;
 load_data = 1;       % Set to true to reload data
 find_shift =  1;      % Set to true to find the best shift
-generate_model = 0;  % Set to true to generate the EIDORS model
 show_first_three_subplots = 0; % Set to false to hide first 3 subplots
-functions = {'Step', ...                            1
-            'Linear', ...                           2
-            'Differential of a Gaussian (DoG)', ... 3
-            'Modulated Gaussian (MG)', ...          4
-            'Experimental (whatever i feel like)'}; ...                5
-function_choice = 4; 
+
 
 
 %% Initialise EIDORS (Only really need to do this the first time you run eacch session)
@@ -19,15 +13,25 @@ if initialise
     clear
     load_data = 1;       % Set to true to reload data
     find_shift = 0;      % Set to true to find the best shift
-    generate_model = 1;  % Set to true to generate the EIDORS model
     show_first_three_subplots = 1; % Set to false to hide first 3 subplots
-    functions = {'Step', ...                            1
-            'Linear', ...                           2
-            'Differential of a Gaussian (DoG)', ... 3
-            'Modulated Gaussian (MG)', ...          4
-            'Antisymmetric MG'}; ...                5
-    function_choice = 1; 
     run('Source/eidors-v3.11-ng/eidors/eidors_startup.m'); % Initialize EIDOR
+
+    height = 0;
+    width = 4.4;
+    len = 3.6;
+    xy = [0 0 width width; 0 len len 0]';
+    curve_type = 1;
+    maxsz = 0.1;
+
+    trunk_shape = {height, xy, curve_type, maxsz};
+    elec_pos  = [32, 1.1];
+    elec_shape = 0.2;
+
+    mdl = ng_mk_extruded_model(trunk_shape, elec_pos, elec_shape);
+    stim = mk_stim_patterns(32, 1, [0, 16], [0, 1], {'no_meas_current'}, 5);
+
+    plain = mk_image(mdl, 1, 'Hi');
+    plain.fwd_model.stimulation = stim;
 end
 
 %% Load Data (Only If Needed)
@@ -50,32 +54,18 @@ end
 %% Find Best Shift (If Needed)
 if find_shift
 
-    best_shift = find_best_shift(data_diff, sim_diff, 1, 896);
+    best_shift = find_best_shift_envelope(data_diff, sim_diff, 1, 896);
     data_diff = circshift(data_diff, best_shift);
-end
-
-%% Model Generation (Only If Needed)
-if generate_model
-    height = 0;
-    width = 4.4;
-    len = 3.6;
-    xy = [0 0 width width; 0 len len 0]';
-    curve_type = 1;
-    maxsz = 0.1;
-
-    trunk_shape = {height, xy, curve_type, maxsz};
-    elec_pos  = [32, 1.1];
-    elec_shape = 0.2;
-
-    mdl = ng_mk_extruded_model(trunk_shape, elec_pos, elec_shape);
-    stim = mk_stim_patterns(32, 1, [0, 16], [0, 1], {'no_meas_current'}, 5);
 end
 
 %% Generate Models and Apply Function
 
-
-plain = mk_image(mdl, 1, 'Hi');
-plain.fwd_model.stimulation = stim;
+functions = {'Step', ...                            1
+            'Linear', ...                           2
+            'Differential of a Gaussian (DoG)', ... 3
+            'Modulated Gaussian (MG)', ...          4
+            'Experimental (whatever i feel like)'}; ...                5
+function_choice = 4; 
 
 press = plain;
 press.elem_data = 1 + elem_select(press.fwd_model, apply_function((function_choice)));
@@ -87,8 +77,8 @@ plain_data = fwd_solve(plain);
 press_data = fwd_solve(press);
 sim_diff = abs(press_data.meas - plain_data.meas);
 sim_diff = normalize(sim_diff);
-correlation = corr(data_diff, sim_diff);
-[up,lo] = envelope(sim_diff,10,'peak');
+correlation = envelope_correlation(data_diff, sim_diff);
+
 
 subplot_idx = 1;
 if show_first_three_subplots
@@ -120,7 +110,6 @@ if show_first_three_subplots
     
     subplot(5, 2, [subplot_idx + 2, subplot_idx + 3]);
     hold on;
-    plot(clip(normalize(up,'center',0,'scale',1),-0.1,5))
     plot(normalize(data_diff,'center',0,'scale',1))
     hold off;
     title('Electrodes Diff Real')
@@ -130,17 +119,28 @@ if show_first_three_subplots
     axis off;
     title({'Correlation Score'})
 else
+    % Define smoothing window size
+    smooth_window = 30;  % Adjust as needed
+    
     subplot(3, 2, [subplot_idx, subplot_idx + 1]);
-    sim_diff = abs(press_data.meas - plain_data.meas);
-    plot(sim_diff)
-    title([sprintf('Electrodes Diff Sim (%s)',string(functions(function_choice)))])
+    plot(data_diff, 'b'); hold on;  % Original data in blue
+    [env_data_diff, ~] = envelope(data_diff, 10, 'peak');
+    env_data_diff_smooth = smooth(env_data_diff, smooth_window, 'moving'); % Apply smoothing
+    plot(env_data_diff_smooth, 'r', 'LineWidth', 1.5); % Smoothed envelope in red
+    hold off;
+    title('Data Difference with Envelope');
+    legend('Data Difference', 'Envelope');
     
     subplot(3, 2, [subplot_idx + 2, subplot_idx + 3]);
-    hold on;
-    % plot(clip(normalize(up,'center',0,'scale',1),-0.1,3))
-    plot(data_diff)
+    plot(sim_diff, 'b'); hold on;  % Simulation difference in blue
+    [env_sim_diff, ~] = envelope(sim_diff, 10, 'peak');
+    env_sim_diff_smooth = smooth(env_sim_diff, smooth_window, 'moving'); % Apply smoothing
+    plot(env_sim_diff_smooth, 'r', 'LineWidth', 1.5); % Smoothed envelope in red
     hold off;
-    title('Electrodes Diff Real')
+    title('Simulation Difference with Envelope');
+    legend('Simulation Difference', 'Envelope');
+
+    
     
     subplot(3, 2, [subplot_idx + 4, subplot_idx + 5])
     text(0.45, 0.5, num2str(correlation), "FontSize", 16);
@@ -237,3 +237,38 @@ function plot_fem_and_cross_section(mdl, function_choices)
     end
 end
 
+
+function best_shift = find_best_shift_envelope(data_diff, sim_diff, shift_step, max_shifts)
+    % Function to find the best shift using envelope correlation
+    
+    max_corr = -Inf;
+    best_shift = 0;
+
+    for i = 1:max_shifts
+        shifted_data = circshift(data_diff, i * shift_step);
+        score = envelope_correlation(shifted_data, sim_diff);  % Use the envelope correlation function
+
+        if score > max_corr
+            max_corr = score;
+            best_shift = i * shift_step;
+        end
+    end
+
+    fprintf('Best shift: %d samples (Envelope Correlation: %.4f)\n', best_shift, max_corr);
+end
+
+function corr_score = envelope_correlation(data1, data2)
+    % Compute the envelope of both signals
+    [env1, ~] = envelope(data1, 10, 'peak');
+    [env2, ~] = envelope(data2, 10, 'peak');
+
+    % Smooth envelopes
+    windowSize = 5;
+    b = (1/windowSize) * ones(1, windowSize);
+    a = 1;
+    env1 = filter(b, a, env1);
+    env2 = filter(b, a, env2);
+
+    % Compute correlation
+    corr_score = corr(env1, env2, 'Type', 'Spearman');  % Spearman correlation for trend matching
+end

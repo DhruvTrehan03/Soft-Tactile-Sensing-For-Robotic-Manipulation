@@ -23,7 +23,8 @@ plot(Left_Data(:,2:end))
 save("SavedVariables\TorqueSliceHom.mat",'clipped_data_hom')
 save("SavedVariables\TorqueSlice.mat",'clipped_data')
 
-
+figure();
+plotHeatmap(EIT,EIT_Time)
 %save("topChannels_corr.mat", "sorted_indices")
 %[errors]  = top_channel_regression_analysis(EIT_Interp,Torque_Interp,Time,sorted_indices,896);
 %save("errors_corr.mat","errors")
@@ -73,8 +74,8 @@ function [Data, Time, retained_indices] = preprocess(Raw_Data, burn_in, end_prop
     Data = Raw_Data(:, 2:end);
     
     % Remove columns with all NaN values
-    columns_with_zeros = all(Data==0);  % Identify columns that are entirely NaN
-    Data = Data(:, ~columns_with_zeros);       % Remove those columns
+    columns_with_zeros = ~all(Data==0);  % Identify columns that are entirely NaN
+    Data = Data(:, columns_with_zeros);       % Remove those columns
     retained_indices = find(~columns_with_zeros);
 
     % % Center and normalize the data

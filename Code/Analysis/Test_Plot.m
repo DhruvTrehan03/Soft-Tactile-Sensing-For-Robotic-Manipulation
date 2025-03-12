@@ -1,63 +1,55 @@
 clear;
+clc;
 
-% Initialize devices with different data rates
-Left = serialport("COM13", 115200);
-Left.Timeout = 1;
+% Initialize the serial port for a single device
+device = serialport("COM14", 115200);
+device.Timeout = 1;
 
-Right = serialport("COM14", 115200);
-Right.Timeout = 1;
+% Command device to start (if required)
+device.write("y", "string");
 
-Load = serialport("COM15", 115200);
-Load.Timeout = 1;
-
-% Command devices to start (if required)
-Left.write("y", "string");
-Right.write("y", "string");
-Load.write("y", "string");
-
-
-% Specify the duration of data collection
-collection_duration = 4620; % in seconds, as a rule of thumb 45*number of twists + 20
+% Specify the duration of data collection (in seconds)
+collection_duration = 4620;  
 start_time = datetime('now');
-disp(datestr(start_time, 'yyyy-mm-dd_HH-MM'))
-save_dir = fullfile('C:\Users\dhruv\4th Year Project\MATLAB\Large_Data\', datestr(start_time, 'yyyy-mm-dd_HH-MM'));
-mkdir(save_dir);
 
-% Buffers to store data
-Right_Data = [];
-Left_Data = [];
-Load_Data = [];
+% Set up figure for live plotting
+figure;
+hold on;
+xlabel('Time (s)');
+ylabel('Sensor Value');
+title('Live Data Plot');
+grid on;
 
-% Continue reading until the collection duration is reached
+% Initialize data storage
+time_stamps = [];
+data_values = [];
+
+% Start data collection loop
 while seconds(datetime('now') - start_time) < collection_duration
-    disp(seconds(datetime('now') - start_time))
-    % Read from device1
-    if Left.NumBytesAvailable > 0
-        line = readline(Left);
-        Right_Data = [Right_Data; datenum(datetime('now')), str2num(line)]; %#ok<*ST2NM>
-    end
+    elapsed_time = seconds(datetime('now') - start_time);
+    disp(elapsed_time);
     
-    % Read from device2
-    if Right.NumBytesAvailable > 0
-        line = readline(Right);
-        Left_Data = [Left_Data; datenum(datetime('now')), str2num(line)];
-    end
-    
-    % Read from device3
-    if Load.NumBytesAvailable > 0
-        line = readline(Load);
-        Load_Data = [Load_Data; datenum(datetime('now')), str2num(line)];
+    % Read data if available
+    if device.NumBytesAvailable > 0
+        line = readline(device);
+        data = str2num(line); %#ok<ST2NM>
+        
+        if ~isempty(data)
+            % Store data
+            time_stamps = [time_stamps; elapsed_time];
+            data_values = [data_values; data];
+            
+            % Update live plot
+            plot(time_stamps, data_values, 'b.-');
+            drawnow;
+        end
     end
 end
 
 % Save collected data
+save('device_data.mat', 'time_stamps', 'data_values');
 
+% Close the serial port
+clear device;
 
-save(fullfile(save_dir, 'device1.mat'), 'Right_Data');
-save(fullfile(save_dir, 'device2.mat'), 'Left_Data');
-save(fullfile(save_dir, 'device3.mat'), 'Load_Data');
-
-% Close serial ports
-clear Left Right Load;
-
-% Post-processing can now align data streams by timestamps if required.
+disp('Data collection complete.');

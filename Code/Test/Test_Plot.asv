@@ -14,7 +14,7 @@ n = input("Enter the number of readings to collect: ");
 calibration_data = [];
 
 % Buffers for storing scaled data
-plotthis_right = zeros(1,1024);
+plotthis_right = zeros(1024,);
 
 % Setup live plot
 figure;
@@ -44,20 +44,21 @@ for i = 1:n
 
         % Read and scale the data
             raw_data = str2num(readline(right)); %#ok<ST2NM>
-            
+            disp(raw_data)
             if ~isempty(raw_data) && exist('mean_val', 'var') && exist('std_val', 'var')
-                scaled_data = (raw_data - mean_val) ;
+                scaled_data = (raw_data - mean_val) / std_val;
+                
                 % Store the scaled data
-                plotthis_right = [plotthis_right; raw_data];
-                disp(i);
+                plotthis_right = [plotthis_right; scaled_data];
+                
                 % Update live plot
-                addpoints(h, i, mean(scaled_data));
+                addpoints(h, i, scaled_data);
                 drawnow;
             end
-
+        disp(['Reading: ', num2str(i)]);
     end
 end
-plot(plotthis_right(2:end,:))
+
 % Save data
 save_dir = 'C:\Users\dhruv\Soft-Tactile-Sensing-For-Robotic-Manipulation\Readings\';
 if ~exist(save_dir, 'dir')

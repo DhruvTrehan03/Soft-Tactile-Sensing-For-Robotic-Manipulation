@@ -5,25 +5,23 @@ load('C:\Users\dhruv\Soft-Tactile-Sensing-For-Robotic-Manipulation\Readings\2024
 burn_in = 0.0001;
 end_proportion =  0.75;
 resolution = 5000;
+EIT = Left_Data(:,2:end);
+EIT_Time = Left_Data(:,1);
+[pks,locs] = findpeaks(Load_Data(:,2),'MinPeakHeight',0.005);
+torqueTimes = Load_Data(locs,1);
 
-[Torque, Torque_Time, ~] = preprocess(Load_Data, burn_in, end_proportion);
-[EIT,EIT_Time, retained_indices] = preprocess(Left_Data, burn_in,end_proportion);
-[ Torque_Interp, EIT_Interp, Time] = interpolate_data(Torque_Time, Torque, EIT_Time, EIT, resolution, false);
-Time = Time-Time(1);
-[pks,locs] = findpeaks(Torque_Interp,'MinPeakHeight',-0.02);
+closest_values = interp1(EIT_Time, 1:length(EIT_Time), torqueTimes, 'next', 'extrap');
+    
+% Convert NaN values (out-of-range) to valid indices
+closest_values(isnan(closest_values)) = length(EIT_Time);
 
-figure()
-plotLine(Torque_Interp, Time); %Time of torque is 0.00403555 index 495-504 corresponding to index 845 - 862
+% Convert to integer indices
+closest_values = ceil(closest_values);
 
-[~,torqueIndices]=findpeaks(Torque_Interp,'MinPeakHeight',-0.02);
-[torquePeaks,~] = findpeaks(Load_Data(:,2),'MinPeakHeight',0.005);
-[EITPeaks,EITIndices]=findpeaks(EIT_Interp(:,579),'MinPeakHeight',0.5);
-
-idx = knnsearch(EITIndices,torqueIndices);
-closest_values = EITIndices(idx); % Extract corresponding values
-
-plot(EIT(closest_values(1),:))
-hom = clip(EIT(end,:),0,0.45);
+figure();hold on;
+plot(EIT(closest_values(1),:) - EIT(100,:)) ;
+hold off;
+hom = EIT(100,:),0,0.45;
 trainTorquePeaks = torquePeaks(1:9);
 testTorquePeaks = torquePeaks(10:99);
 save("SavedVariables\TorqueFitting\Torque.mat","trainTorquePeaks","testTorquePeaks")

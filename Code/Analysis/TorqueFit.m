@@ -16,7 +16,7 @@ if initialise
     find_shift = false;
     test_mode = false;
     opt = false;
-    params = 1;
+    params = 0;
     fit = 1;
     smooth_coeff = 50;
     
@@ -347,8 +347,8 @@ function evaluate_fit(test_results, k_fit, sigma_fit)
     % Plot errors
     figure;
     subplot(2,1,1);
-    plot(test_torques, abs_error_k, 'bo-', 'LineWidth', 1.5); hold on;
-    plot(test_torques, abs_error_sigma, 'ro-', 'LineWidth', 1.5);
+    scatter(test_torques, abs_error_k, 'bo'); hold on;
+    scatter(test_torques, abs_error_sigma, 'ro');
     title('Torque vs. Absolute Error');
     xlabel('Torque');
     ylabel('Absolute Error');
@@ -356,8 +356,8 @@ function evaluate_fit(test_results, k_fit, sigma_fit)
     grid on;
 
     subplot(2,1,2);
-    plot(test_torques, percent_error_k, 'bo-', 'LineWidth', 1.5); hold on;
-    plot(test_torques, percent_error_sigma, 'ro-', 'LineWidth', 1.5);
+    scatter(test_torques, percent_error_k, 'bo'); hold on;
+    scatter(test_torques, percent_error_sigma, 'ro');
     title('Torque vs. Percentage Error');
     xlabel('Torque');
     ylabel('Percentage Error (%)');
@@ -366,25 +366,31 @@ function evaluate_fit(test_results, k_fit, sigma_fit)
 end
 
 function analyze_torque_fit(train_results, test_results)
-    % ANALYZE_TORQUE_FIT: Plots optimized k and sigma for all torque values with unique colors.
-    
+    % ANALYZE_TORQUE_FIT: Plots optimized k and sigma for all torque values using binned torque values for coloring.
+    %
+    % Inputs:
+    % - train_results: Matrix (N_train x 3) [Torque, k_opt, sigma_opt]
+    % - test_results: Matrix (N_test x 3) [Torque, k_opt, sigma_opt]
+    % - num_bins: Number of bins to group torque values (should be 10)
+
     % Combine train & test data
     all_results = [train_results; test_results];
     all_torques = all_results(:,1);
     all_k = all_results(:,2);
     all_sigma = all_results(:,3);
 
-    % Identify unique torque levels for coloring
-    unique_torques = unique(all_torques);
-    num_colors = length(unique_torques);
-    cmap = lines(num_colors);  % Generate distinct colors
+    % Create bins for torque values (forcing 10 bins)
+    [~, ~, bin_idx] = histcounts(all_torques, 10);
+
+    % Define a colormap with exactly 10 distinct colors
+    cmap = lines(10);
 
     % Plot optimized k vs Torque
     figure;
     subplot(2,1,1); hold on;
-    for i = 1:num_colors
-        idx = (all_torques == unique_torques(i));
-        scatter(all_torques(idx), all_k(idx), 50, cmap(i,:), 'filled', 'DisplayName', sprintf('Torque %.2f', unique_torques(i)));
+    for i = 2:10
+        idx = (bin_idx == i);
+        scatter(all_torques(idx), all_k(idx), 50, cmap(i,:), 'filled', 'DisplayName', sprintf('Bin %d', i));
     end
     title('Optimized k vs Torque');
     xlabel('Torque');
@@ -394,9 +400,9 @@ function analyze_torque_fit(train_results, test_results)
 
     % Plot optimized sigma vs Torque
     subplot(2,1,2); hold on;
-    for i = 1:num_colors
-        idx = (all_torques == unique_torques(i));
-        scatter(all_torques(idx), all_sigma(idx), 50, cmap(i,:), 'filled', 'DisplayName', sprintf('Torque %.2f', unique_torques(i)));
+    for i = 1:10
+        idx = (bin_idx == i);
+        scatter(all_torques(idx), all_sigma(idx), 50, cmap(i,:), 'filled', 'DisplayName', sprintf('Bin %d', i));
     end
     title('Optimized \sigma vs Torque');
     xlabel('Torque');
@@ -404,5 +410,3 @@ function analyze_torque_fit(train_results, test_results)
     legend('Location', 'best');
     grid on;
 end
-
-

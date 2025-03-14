@@ -139,8 +139,7 @@ if params
 end
 
 if fit
-    train_results = load("SavedVariables\TrainedParameter.mat").train_results;
-    test_results = load("SavedVariables\TrainedParameter.mat").test_results;
+    [train_results,test_results] = [load("SavedVariables\TrainedParameter.mat");
     [k_fit,sigma_fit]=fit_torque(train_results);
     evaluate_fit(test_results, k_fit, sigma_fit);
     analyze_torque_fit(train_results, test_results)

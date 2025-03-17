@@ -1,0 +1,5 @@
+Cube: 0
+Heart: 1
+Pill: 2
+Sphere: 3
+Triangle: 4

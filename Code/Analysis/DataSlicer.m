@@ -1,6 +1,6 @@
 clear;
-load('C:\Users\dhruv\Soft-Tactile-Sensing-For-Robotic-Manipulation\Readings\2024-12-05_18-15\device2.mat')
-load('C:\Users\dhruv\Soft-Tactile-Sensing-For-Robotic-Manipulation\Readings\2024-12-05_18-15\device3.mat')
+load('..\Readings\2024-12-05_18-15\device2.mat')
+load('..\Readings\2024-12-05_18-15\device3.mat')
 
 burn_in = 0.0001;
 end_proportion =  0.75;
@@ -8,7 +8,7 @@ resolution = 5000;
 EIT = Left_Data(:,2:end);
 EIT = EIT(:,~all(EIT==0));
 EIT_Time = Left_Data(:,1);
-[pks,locs] = findpeaks(Load_Data(:,2),'MinPeakHeight',0.005);
+[pks,locs] = findpeaks(Load_Data(:,2),'MinPeakHeight',0.05);
 torqueTimes = Load_Data(locs,1);
 
 closest_values = interp1(EIT_Time, 1:length(EIT_Time), torqueTimes, 'next', 'extrap');
@@ -20,26 +20,26 @@ closest_values(isnan(closest_values)) = length(EIT_Time);
 closest_values = ceil(closest_values);
 
 figure();hold on;
-plot(abs(EIT(closest_values(1),:) - EIT(100,:))) ;
+plot(abs(EIT(closest_values(1),:) - EIT(end,:))) ;
 hold off;
 hom = EIT(100,:);
-trainTorquePeaks = pks(1:9);
-testTorquePeaks = pks(10:99);
-save("SavedVariables\TorqueFitting\Torque.mat","trainTorquePeaks","testTorquePeaks")
-for i = 1:9
-    data = EIT(closest_values(i),:);
-    % plot(data)
-    data_diff = abs(data-hom);
-    % plot(data_diff)
-    save(sprintf("SavedVariables\\TorqueFitting\\Train_%i",i),"data_diff");
-    disp(i);
-end
-for i=10:99
-    data = EIT(closest_values(i),:);
-    data_diff = data-hom;
-    save(sprintf("SavedVariables\\TorqueFitting\\Test_%i",i),"data_diff");
-    disp(i);
-end 
+trainTorquePeaks = pks(1:4);
+testTorquePeaks = pks(4:70);
+% save("SavedVariables\TorqueFitting\Torque.mat","trainTorquePeaks","testTorquePeaks")
+% for i = 1:9
+%     data = EIT(closest_values(i),:);
+%     % plot(data)
+%     data_diff = abs(data-hom);
+%     % plot(data_diff)
+%     save(sprintf("SavedVariables\\TorqueFitting\\Train_%i",i),"data_diff");
+%     disp(i);
+% end
+% for i=10:99
+%     data = EIT(closest_values(i),:);
+%     data_diff = data-hom;
+%     save(sprintf("SavedVariables\\TorqueFitting\\Test_%i",i),"data_diff");
+%     disp(i);
+% end 
 
 
 

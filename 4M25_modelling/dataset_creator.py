@@ -16,7 +16,7 @@ def build_shape_dict(file_list):
         shapes.add(parts[1]) # add shape to set
     shape_to_idx = {shape: idx for idx, shape in enumerate(sorted(shapes))} # build map shape strings to indices
     # save the mapping to a file
-    with open('prediction_modelling/shape_to_idx.txt', 'w') as f:
+    with open('4M25_modelling/shape_to_idx.txt', 'w') as f:
         for shape, idx in shape_to_idx.items():
             f.write(f"{shape}: {idx}\n")
     return shape_to_idx

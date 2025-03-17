@@ -6,7 +6,7 @@ load_data = false;
 find_shift = false;      
 test_mode = false;
 opt = false;
-params = 0;
+params = 1;
 fit = 1;
 
 % Initialize EIDORS (Only required the first time in a session)
@@ -90,7 +90,7 @@ if test_mode
     press_data = fwd_solve(press);
     
     % Compute Difference
-    sim_diff = abs(press_data.meas - plain_data.meas) / 10;
+    sim_diff = abs(press_data.meas - plain_data.meas);
     [correlation, env_data_diff_smooth, env_sim_diff_smooth] = envelope_correlation(data_diff, sim_diff, smooth_coeff);
     
     % Plot Results
@@ -212,8 +212,7 @@ function [corr_score,env1,env2] = envelope_correlation(data1, data2,smooth_coeff
     a = 1;
     env1 = filter(b, a, env1);
     env2 = filter(b, a, env2);
-
-    % Compute correlation
+    
     corr_score = corr(env1, env2, 'Type', 'Spearman');  % Spearman correlation for trend matching
 end
 
@@ -223,6 +222,8 @@ function [best_k, best_sigma, best_corr] = optimize_parameters(data_diff, mdl,st
     best_corr = -Inf;
     best_k = 0;
     best_sigma = 0;
+    best_env_1 = 0;
+    best_env_2=0;
 
     for k = k_values
         for sigma = sigma_values
@@ -243,17 +244,23 @@ function [best_k, best_sigma, best_corr] = optimize_parameters(data_diff, mdl,st
             sim_diff_test = abs(press_data.meas - plain_data.meas) / 10;
 
             % Compute envelope correlation
-            corr_score = envelope_correlation(data_diff, sim_diff_test, smooth_coeff);
+            [corr_score,env_1,env_2] = envelope_correlation(data_diff, sim_diff_test, smooth_coeff);
 
             % Check if this is the best correlation found
             if corr_score > best_corr
                 best_corr = corr_score;
                 best_k = k;
                 best_sigma = sigma;
+                best_env_1 = env_1;
+                best_env_2= env_2;
             end
         end
     end
     fprintf('Best k: %.2f, Best sigma: %.2f, Best correlation: %.4f\n', best_k, best_sigma, best_corr);
+    figure()
+    hold on
+    plot(best_env_1);plot(best_env_2);hold off;
+    % Compute correlation
 end
 
 function [train_results, test_results] = find_params(data_dir, train_torques, test_torques, mdl, stim, k_values, sigma_values, smooth_coeff)

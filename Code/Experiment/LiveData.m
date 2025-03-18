@@ -1,88 +1,67 @@
-% For debugging: see EIT board data in real time
-
 clear
+clc
 
-% Prompt user to select which devices to initialize
+% Prompt user to select devices
 init_left = input('Initialize Left (COM13)? (1 for yes, 0 for no): ');
 init_right = input('Initialize Right (COM14)? (1 for yes, 0 for no): ');
 init_truth = input('Initialize Truth (COM15)? (1 for yes, 0 for no): ');
 
-% Initialize selected devices
-if init_left
-    left = serialport("COM13", 115200);
-    left.Timeout = 25;
-end
-if init_right
-    right = serialport("COM14", 115200);
-    right.Timeout = 25;
-end
-if init_truth
-    truth = serialport("COM15", 115200);
-    truth.Timeout = 25;
+% Create parallel pool if not already open
+poolobj = gcp('nocreate');
+if isempty(poolobj)
+    parpool; % Start parallel pool
 end
 
-% Send initialization command to active devices
-if init_left, left.write("y", "string"); end
-if init_right, right.write("y", "string"); end
-
-% Get the current time to create unique file names
-current_time = datetime('now', 'Format', 'yyyy-MM-dd_HH-mm-ss');  % Current time with format YYYYMMDD_HHMMSS
-time_str = char(current_time);
-
-% Specify the directory to save the data
-save_dir = ['C:\Users\dhruv\Soft-Tactile-Sensing-For-Robotic-Manipulation\Readings\', time_str];
-mkdir(save_dir)
-
-% Initialize data buffers
-for i = 1:1
-    current_time = datenum(datetime('now', 'Format', 'HH:mm:ss.SSS'));
-    if init_left, data_left = str2num(readline(left)); end
-    if init_right, data_right = str2num(readline(right)); end
-    if init_truth, data_truth = str2num(readline(truth)); end
-end
-
-if init_left, plotthis_left = [current_time, data_left]; end
-if init_right, plotthis_right = [current_time, data_right]; end
-if init_truth, plotthis_truth = [current_time, data_truth]; end
-
-% Number of readings to capture
+% Get the number of readings
 n = input("What value of n (readings)? ");
 
-for i = 1:n
-    disp(i);
-    
-    % Read data from active devices
-    if init_left, data_left = str2num(readline(left)); end
-    if init_right, data_right = str2num(readline(right)); end
-    if init_truth, data_truth = str2num(readline(truth)); end
-    
-    % Get the current time for this reading
-    current_time = datenum(datetime('now', 'Format', 'HH:mm:ss.SSS'));
-    
-    % Process and append data if available
-    if init_left && ~isempty(data_left)
-        data_left = [current_time, data_left];
-        plotthis_left = [plotthis_left; data_left];
-    end
-    if init_right && ~isempty(data_right)
-        data_right = [current_time, data_right];
-        plotthis_right = [plotthis_right; data_right];
-    end
-    if init_truth && ~isempty(data_truth)
-        data_truth = [current_time, data_truth];
-        plotthis_truth = [plotthis_truth; data_truth];
-    end
+% Get the current time for unique filenames
+current_time = datetime('now', 'Format', 'yyyy-MM-dd_HH-mm-ss');
+time_str = char(current_time);
+save_dir = fullfile('C:\Users\dhruv\Soft-Tactile-Sensing-For-Robotic-Manipulation\Readings\40mm\', time_str);
+mkdir(save_dir)
 
-    % Store time for each reading
-    time_log(i) = current_time;
+% Create futures for each device
+futures = [];
+
+if init_left
+    futures(end+1) = parfeval(@readSerialData, 1, "COM13", save_dir, 'left', n);
+end
+if init_right
+    futures(end+1) = parfeval(@readSerialData, 1, "COM14", save_dir, 'right', n);
+end
+if init_truth
+    futures(end+1) = parfeval(@readSerialData, 1, "COM15", save_dir, 'truth', n);
 end
 
-% Save data only for initialized devices
-if init_left, save(fullfile(save_dir, 'left.mat'), 'plotthis_left'); end
-if init_right, save(fullfile(save_dir, 'right.mat'), 'plotthis_right'); end
-if init_truth, save(fullfile(save_dir, 'truth.mat'), 'plotthis_truth'); end
+% Wait for all tasks to complete
+wait(futures);
 
-% Clear initialized devices
-if init_left, clear left; end
-if init_right, clear right; end
-if init_truth, clear truth; end
+disp('All readings completed and saved.');
+
+%% Function to Read Serial Data in Parallel
+function readSerialData(port, save_dir, label, n)
+    device = serialport(port, 115200);
+    device.Timeout = 25;
+    write(device, "y", "string"); % Send initialization command
+    pause(1); % Allow time for response
+
+    plotthis = [];
+
+    for i = 1:n
+        current_time = datenum(datetime('now', 'Format', 'HH:mm:ss.SSS'));
+        try
+            data = str2num(readline(device)); % Read data
+            if ~isempty(data)
+                plotthis = [plotthis; current_time, data];
+            end
+        catch
+            warning("Error reading from %s", port);
+        end
+        pause(0.01); % Small pause to allow different rates
+    end
+
+    % Save data
+    save(fullfile(save_dir, [label, '.mat']), 'plotthis');
+    clear device;
+end

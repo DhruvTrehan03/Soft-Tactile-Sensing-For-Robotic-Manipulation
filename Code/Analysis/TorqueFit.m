@@ -130,8 +130,8 @@ if params
     train_torque = load("SavedVariables\TorqueFitting\Torque.mat").trainTorquePeaks';
     test_torque = load("SavedVariables\TorqueFitting\Torque.mat").testTorquePeaks';
 
-    k_values = linspace(1, 20, 20);
-    sigma_values = linspace(0, 1, 20);
+    k_values = linspace(2, 50, 100);
+    sigma_values = linspace(0, 2.2, 100);
     smooth_coeff = 50;
     
     [train_results, test_results] = find_params(data_dir, train_torque, test_torque, mdl, stim, k_values, sigma_values, smooth_coeff);

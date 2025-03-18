@@ -1,7 +1,7 @@
 % For debugging: see EIT board data in real time
 
 clear device
-device = serialport("COM13",115200);
+device = serialport("COM15",115200);
 device.Timeout = 25;
 
 device.write("y", "string");
@@ -17,6 +17,7 @@ n = 300;
 for i = 1:n
     i;
     data = readline(device);
+    disp(data)
     if ~isempty(data)
         data = str2num(data);
         plotthis = [plotthis; data];

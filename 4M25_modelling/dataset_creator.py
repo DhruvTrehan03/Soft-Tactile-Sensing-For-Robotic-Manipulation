@@ -44,6 +44,7 @@ class EITDataset(Dataset):
             # Load .mat file
             mat = scipy.io.loadmat(file)
             data = mat['plotthis_right']  # extract the 11x1024 matrix from the .mat file
+            data = torch.tensor(data, dtype=torch.float)
             
             # Extract label information from the filename
             # Example filename: "cube_2_1_1.mat" => shape: "cube", position: 2, orientation: 1, trial: 1
@@ -55,8 +56,8 @@ class EITDataset(Dataset):
                 continue
             
             shape_str = parts[1]
-            position = int(parts[2])
-            orientation = int(parts[3])
+            position = int(parts[2]) -1 # subtract 1 to make it 0-based
+            orientation = int(parts[3]) -1
             
             # Convert shape string to an index
             shape_num = self.shape_to_idx[shape_str]
@@ -69,6 +70,9 @@ class EITDataset(Dataset):
         # Convert lists to numpy arrays (optional)
         self.samples = np.array(self.samples)  # shape: (n_samples, 1024)
         self.labels = np.array(self.labels)      # shape: (n_samples, 3)
+        
+        # normalize the samples
+        self.samples = (self.samples - np.mean(self.samples, axis=0)) / (np.std(self.samples, axis=0)+1e-6)
 
     def __len__(self):
         return len(self.samples)

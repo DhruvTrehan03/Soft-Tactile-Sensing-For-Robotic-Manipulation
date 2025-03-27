@@ -1,10 +1,11 @@
 clear
-load("topChannels_abscorr.mat");
+load("topChannels_corr.mat");
 %plotElectrodeChannels('896',sorted_indices ,169)
 %plotTopChannelsCirclesPairs('896',sorted_indices ,25)
 %plotElectrodeUsage('896', sorted_indices,25)
-plotTopChannelsWithSummary('896', sorted_indices,25)
-%plotTopChannelsSummary('896', sorted_indices,640)
+% plotTopChannelsWithSummary('896', sorted_indices,25)
+
+plotTopChannelsSummary('896', sorted_indices,169)
 
 function plotElectrodeChannels(electrodeType, channel_list, no_channels)
     % Load the data
@@ -452,7 +453,6 @@ function plotTopChannelsSummary(electrodeType, channel_list, no_channels)
     % Load the data
     load("oppad32.mat");
     load("electrodeposition.mat");
-
     % Determine number of channels based on electrodeType
     if strcmp(electrodeType, '896')
         totalChannels = 896;
@@ -524,8 +524,50 @@ function plotTopChannelsSummary(electrodeType, channel_list, no_channels)
     ylim([0, 28]);
     hold off;
 
-    figure()
+    cool = figure();
     hold on;
+
+    % Load the image (with or without transparency)
+    [YourImage, ~, ~] = imread('Figures\\screwdriver.jpg');
+    YourImage = imrotate(YourImage,90);
+    % Define position, size, and rotation
+    x_pos = 7;  % X-position (lower-left corner)
+    y_pos = 4.35;  % Y-position (lower-left corner)
+    scale_factor = 0.01;  % Scale factor (resize the image)
+    rotation_angle = 90;  % Rotation angle in degrees (clockwise)
+    
+    % Get image dimensions
+    [img_height, img_width, ~] = size(YourImage);
+    
+    % Define scaled width and height
+    scaled_width = img_width * scale_factor;
+    scaled_height = img_height * scale_factor;
+    
+    
+    % Define the rotation matrix (for rotation around the center)
+    rotation_matrix = [cosd(rotation_angle), -sind(rotation_angle); sind(rotation_angle), cosd(rotation_angle)];
+    
+    % Compute new corners of the image after rotation
+    % Set the image center as the pivot point for rotation
+    image_center = [x_pos + scaled_width/2, y_pos + scaled_height/2];
+    
+    % Apply rotation to the corners (to get rotated bounding box)
+    corners = [x_pos, y_pos; 
+               x_pos + scaled_width, y_pos;
+               x_pos + scaled_width, y_pos + scaled_height;
+               x_pos, y_pos + scaled_height];
+    
+    % Shift corners to the center, rotate, and then shift back
+    rotated_corners = (rotation_matrix * (corners - image_center)')' + image_center;
+    
+    % Display the image with position, scaling, and rotation
+    image('CData', YourImage, ...
+          'XData', [corners(1, 1), corners(2, 1)], ... % X-position
+          'YData', [corners(1, 2), corners(4, 2)]);
+
+
+
+
     % Plot the average injection vector
     avg_vector_inj = mean(injection_vectors, 1);
     avg_vector_inj = avg_vector_inj / norm(avg_vector_inj) * 10; % Normalize and scale
@@ -540,22 +582,21 @@ function plotTopChannelsSummary(electrodeType, channel_list, no_channels)
     quiver(avg_midpoint_read(1), avg_midpoint_read(2), avg_vector_read(1), avg_vector_read(2), 0, ...
         'Color', 'b', 'LineWidth', 2, 'MaxHeadSize', 1, 'DisplayName', 'Avg Read Vector');    
     
-    % Add the screwdriver
-    screwdriver_x = [0, 36]; % Screwdriver aligned perpendicular to the axis
-    screwdriver_y = [14, 14]; % Length of the screwdriver
-    plot(screwdriver_x, screwdriver_y, 'k','LineStyle','--','LineWidth', 2, 'DisplayName', 'Screwdriver'); % Red line for screwdriver
+ 
+   
+    % 
+    % % Indicate the twisting motion with an arc
+    % theta = linspace(-pi/4, pi/4, 50); % Arc from -45 to +45 degrees
+    % arc_radius = 1.2; % Radius of the arc
+    % arc_x = arc_radius * cos(theta); % X-coordinates of the arc
+    % arc_y = arc_radius * sin(theta); % Y-coordinates of the arc
+    % plot(4+arc_x, 14+arc_y, 'g', 'LineWidth', 1.5, 'DisplayName', 'Rotation'); % Green arc for rotation
+    % plot(28+arc_x, 14+arc_y, 'g', 'LineWidth', 1.5, 'DisplayName', 'Rotation'); % Green arc for rotation
     
-    
+    circular_arrow(gcf, 1.2, [4, 14], 0, 120, 1, 'b', 2, 'vback2');
+    circular_arrow(gcf, 1.2, [28, 14], 0, 120, 1, 'b', 2, 'vback2');
 
-    % Indicate the twisting motion with an arc
-    theta = linspace(-pi/4, pi/4, 50); % Arc from -45 to +45 degrees
-    arc_radius = 1.2; % Radius of the arc
-    arc_x = arc_radius * cos(theta); % X-coordinates of the arc
-    arc_y = arc_radius * sin(theta); % Y-coordinates of the arc
-    plot(4+arc_x, 14+arc_y, 'g', 'LineWidth', 1.5, 'DisplayName', 'Rotation'); % Green arc for rotation
-    plot(28+arc_x, 14+arc_y, 'g', 'LineWidth', 1.5, 'DisplayName', 'Rotation'); % Green arc for rotation
-    
-    scatter(18,14,'o','filled','k','DisplayName','Centre','LineWidth',2 )
+    scatter(18,14,'o','filled','c','DisplayName','Centre','LineWidth',2 )
     legend('AutoUpdate','off')
     
     line([0, 0], [28, 0], 'Color', 'k', 'LineWidth', 1.5 );
@@ -563,21 +604,28 @@ function plotTopChannelsSummary(electrodeType, channel_list, no_channels)
     line([0, 36], [28, 28], 'Color', 'k', 'LineWidth', 1.5); 
     line([0, 36], [0, 0], 'Color', 'k', 'LineWidth', 1.5);
 
-    plot(screwdriver_x, screwdriver_y, 'k','LineStyle','--','LineWidth', 2, 'DisplayName', 'Screwdriver');
     % Configure the aggregate plot for injection vectors
     title('Aggregate Summary of Injection Vectors', 'FontSize', 14);
     xlabel('X Position (mm)', 'FontSize', 12);
     ylabel('Y Position (mm)', 'FontSize', 12);
     legend('Location', 'northeastoutside');
-    grid on;
+    grid off;
     axis equal;
+    yline(14,LineStyle="-")
     xlim([0, 36]);
     ylim([0, 28]);
+    
+
+    % % Display the screwdriver image with scaling and transparency
+    % image(img, 'XData', [x_pos, x_pos + scaled_width], 'YData', [y_pos, y_pos + scaled_height],'AlphaData',alpha.*transparency_factor);
     hold off;
 
     % Plot the aggregate summary of read vectors
     figure;
     hold on;
+
+
+
 
     scatter(electrodepositions(:, 1), electrodepositions(:, 2), 30, "k", "filled", 'DisplayName', 'Electrodes');
     quiver(read_midpoints(:, 1), read_midpoints(:, 2), read_vectors(:, 1), read_vectors(:, 2), 0, ...
@@ -597,10 +645,10 @@ function plotTopChannelsSummary(electrodeType, channel_list, no_channels)
     xlim([0,36]);
     scatter(electrodepositions(:, 1), electrodepositions(:, 2), 30, "k", "filled", 'DisplayName', 'Electrodes');
     hold off;
-    
+
     figure()
     hold on;
-    
+
     % Plot the normalized average vectors starting from (0,0)
     quiver(0, 0, avg_vector_inj(1), avg_vector_inj(2), 0, ...
         'Color', 'r', 'LineWidth', 2, 'MaxHeadSize', 2, 'DisplayName', 'Normalized Avg Injection Vector');
@@ -610,7 +658,7 @@ function plotTopChannelsSummary(electrodeType, channel_list, no_channels)
     % Add a centered axis
     line([-12, 12], [0, 0], 'Color', 'k', 'LineStyle', '--', 'LineWidth', 1.5 ); % X-axis
     line([0, 0], [-12, 12], 'Color', 'k', 'LineStyle', '--', 'LineWidth', 1.5); % Y-axis
-    
+
     % Configure plot appearance
     title('Normalized Average Vectors (Centered)');
     xlabel('X Axis');
@@ -621,4 +669,127 @@ function plotTopChannelsSummary(electrodeType, channel_list, no_channels)
     xlim([-12, 12]); % Define axis limits
     ylim([-12, 12]);
     hold off;
+end
+
+function circular_arrow(figHandle, radius, centre, arrow_angle, angle, direction, colour, head_size, head_style)
+% This is a function designed to draw a circular arrow onto the current
+% figure. It is required that "hold on" must be called before calling this
+% function. 
+%
+% The correct calling syntax is:
+%   circular_arrow(height, centre, angle, direction, colour, head_size)
+%   where:
+%       figHandle - the handle of the figure to be drawn on.
+%       radius - the radius of the arrow. 
+%       centre - a vector containing the desired centre of the circular
+%                   arrow.
+%       arrow_angle - the desired orientation angle of the circular arrow.
+%                   This is measured in degrees counter-clockwise 
+%       angle - the angle between starting and end point of the arrow in
+%                   degrees.
+%       direction - variable set to determine format of arrow head. Use 1
+%                   to get a clockwise arrow, -1 to get a counter clockwise
+%                   arrow, 2 to get a double headed arrow and 0 to get just
+%                   an arc. 
+%       colour (optional) - the desired colour of the arrow, using Matlab's
+%                   <a href="matlab:
+%                   web('https://au.mathworks.com/help/matlab/ref/colorspec.html')">Color Specification</a>. 
+%       head_size (optional) - the size of the arrow head.
+%       head_style (optional) - the style of the arrow head.
+%                   For more information, see <a href="matlab: 
+%                   web('http://au.mathworks.com/help/matlab/ref/annotationarrow-properties.html#property_HeadStyle')">Annotation Arrow Properties</a>.
+%Ensure proper number of arguments
+if (nargin < 6)||(nargin > 9)
+    error(['Wrong number of parameters '...
+        'Enter "help circular_arrow" for more information']);
+end
+% arguments 7, 8 and 9 are optional,
+if nargin < 9
+   head_style = 'vback2';
+end
+if nargin < 8
+   head_size = 10;
+end
+if nargin < 7
+   colour = 'k';
+end
+% display a warning if the headstyle has been specified, but direction has
+% been set to no heads
+if nargin == 9 && direction == 0
+    warning(['Head style specified, but direction set to 0! '...
+        'This will result in no arrow head being displayed.']);
+end
+    
+% Check centre is vector with two points
+[m,n] = size(centre);
+if m*n ~= 2
+    error('Centre must be a two element vector');
+end
+arrow_angle = deg2rad(arrow_angle); % Convert angle to rad
+angle = deg2rad(angle); % Convert angle to rad
+xc = centre(1);
+yc = centre(2);
+% Creating (x, y) values that are in the positive direction along the x
+% axis and the same height as the centre
+x_temp = centre(1) + radius;
+y_temp = centre(2);
+% Creating x & y values for the start and end points of arc
+x1 = (x_temp-xc)*cos(arrow_angle+angle/2) - ...
+        (y_temp-yc)*sin(arrow_angle+angle/2) + xc;
+x2 = (x_temp-xc)*cos(arrow_angle-angle/2) - ...
+        (y_temp-yc)*sin(arrow_angle-angle/2) + xc;
+x0 = (x_temp-xc)*cos(arrow_angle) - ...
+        (y_temp-yc)*sin(arrow_angle) + xc;
+y1 = (x_temp-xc)*sin(arrow_angle+angle/2) + ...
+        (y_temp-yc)*cos(arrow_angle+angle/2) + yc;
+y2 = (x_temp-xc)*sin(arrow_angle-angle/2) + ... 
+        (y_temp-yc)*cos(arrow_angle-angle/2) + yc;
+y0 = (x_temp-xc)*sin(arrow_angle) + ... 
+        (y_temp-yc)*cos(arrow_angle) + yc;
+% Plotting twice to get angles greater than 180
+i = 1;
+% Creating points
+P1 = struct([]);
+P2 = struct([]);
+P1{1} = [x1;y1]; % Point 1 - 1
+P1{2} = [x2;y2]; % Point 1 - 2
+P2{1} = [x0;y0]; % Point 2 - 1
+P2{2} = [x0;y0]; % Point 2 - 1
+centre = [xc;yc]; % guarenteeing centre is the right dimension
+n = 1000; % The number of points in the arc
+v = struct([]);
+    
+while i < 3
+    v1 = P1{i}-centre;
+    v2 = P2{i}-centre;
+    c = det([v1,v2]); % "cross product" of v1 and v2
+    a = linspace(0,atan2(abs(c),dot(v1,v2)),n); % Angle range
+    v3 = [0,-c;c,0]*v1; % v3 lies in plane of v1 and v2 and is orthog. to v1
+    v{i} = v1*cos(a)+((norm(v1)/norm(v3))*v3)*sin(a); % Arc, center at (0,0)
+    plot(v{i}(1,:)+xc,v{i}(2,:)+yc,'Color', colour) % Plot arc, centered at P0
+    i = i + 1;
+end
+position = struct([]);
+% Setting x and y for CW and CCW arrows
+if direction == 1
+    position{1} = [x2 y2 x2-(v{2}(1,2)+xc) y2-(v{2}(2,2)+yc)];
+elseif direction == -1
+    position{1} = [x1 y1 x1-(v{1}(1,2)+xc) y1-(v{1}(2,2)+yc)];
+elseif direction == 2
+    position{1} = [x2 y2 x2-(v{2}(1,2)+xc) y2-(v{2}(2,2)+yc)];
+    position{2} = [x1 y1 x1-(v{1}(1,2)+xc) y1-(v{1}(2,2)+yc)];  
+elseif direction == 0
+    % Do nothing
+else
+    error('direction flag not 1, -1, 2 or 0.');
+end
+% Loop for each arrow head
+i = 1;
+while i < abs(direction) + 1
+    h=annotation('arrow'); % arrow head
+    set(h,'parent', gca, 'position', position{i}, ...
+        'HeadLength', head_size, 'HeadWidth', head_size,...
+        'HeadStyle', head_style, 'linestyle','none','Color', colour);
+    i = i + 1;
+end
 end

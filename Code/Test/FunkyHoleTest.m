@@ -37,8 +37,7 @@
 
 
 %%
-ThreeD();
-
+MultiSelectFEM();
 %%
 function TwoD()
     clear
@@ -79,9 +78,23 @@ function TwoD()
     
     stim = mk_stim_patterns(2*n_elec, 1, [0, 1], [1, 0], {'no_meas_current'}, 5);
     r=0.3;
-    select_fcn = @(x,y,z)((x-2.2).^2+(y-1.5).^2<r^2);
+    % select_fcn = @(x,y,z)((x-2.2).^2+(y-1.5).^2<r^2);
     % select_fcn = @(x,y,z)(x>1.9) & (x<2.5) & (y<1.8) & (y>1.2);
-    
+    % select_fcn = @(x,y,z) ( ...
+    %     (( (x - 2.2) - (y - 1.5) ) / sqrt(2) > (1.9 - 2.2)) & ...
+    %     (( (x - 2.2) - (y - 1.5) ) / sqrt(2) < (2.5 - 2.2)) & ...
+    %     (( (x - 2.2) + (y - 1.5) ) / sqrt(2) > (1.2 - 1.5)) & ...
+    %     (( (x - 2.2) + (y - 1.5) ) / sqrt(2) < (1.8 - 1.5)) ...
+    % );
+    x_c= 2.2;
+    y_c = 1.4;
+    s=0.8;
+    select_fcn = @(x, y, z) inpolygon(x, y, ...
+    [x_c, x_c - s/2, x_c + s/2], ...
+    [y_c + sqrt(3)/3 * s, y_c - sqrt(3)/6 * s, y_c - sqrt(3)/6 * s]);
+
+
+
     %% Generate Models and Apply Function
     plain = mk_image(mdl, 10, 'Hi');
     plain.fwd_model.stimulation = stim;
@@ -147,4 +160,99 @@ function ThreeD()
     clear
     run('Source/eidors-v3.11-ng/eidors/eidors_startup.m'); % Initialize EIDORS
     
+end
+
+function MultiSelectFEM()
+    clear
+    run('Source/eidors-v3.11-ng/eidors/eidors_startup.m'); % Initialize EIDORS
+
+    % Define model
+    width  = 4.4;
+    height = 3.6;
+    outer_xy = [0,  0;
+                width,  0;
+                width, height;
+                0,  height];  
+
+    hole1_xy = [1,   1;
+                1.5, 1;
+                1.5, 2;
+                1,   2];  
+
+    hole2_xy = [2.9, 1;
+                3.4, 1;
+                3.4, 2;
+                2.9, 2];  
+
+    shape = {outer_xy, hole1_xy, hole2_xy, 0.1};  
+
+    % Electrodes
+    elec_outer   = [0, 1];  
+    n_elec = 12;
+    elec_inner1  = [1.5 * ones(n_elec,1), linspace(1,2,n_elec)'];  
+    elec_inner2  = [2.9 * ones(n_elec,1), linspace(1,2,n_elec)'];  
+    elec_pos = {elec_outer, elec_inner1, elec_inner2}; 
+
+    % Generate model
+    mdl = ng_mk_2d_model(shape, elec_pos);
+    stim = mk_stim_patterns(2*n_elec, 1, [0, 1], [1, 0], {'no_meas_current'}, 5);
+
+    % Define Select Functions
+    select_fcns = {
+        @(x, y, z) (x > 1.9) & (x < 2.5) & (y < 1.8) & (y > 1.2),  % Square Region
+        @(x, y, z) ( ...
+            (( (x - 2.2) - (y - 1.5) ) / sqrt(2) > (1.9 - 2.2)) & ...
+            (( (x - 2.2) - (y - 1.5) ) / sqrt(2) < (2.5 - 2.2)) & ...
+            (( (x - 2.2) + (y - 1.5) ) / sqrt(2) > (1.2 - 1.5)) & ...
+            (( (x - 2.2) + (y - 1.5) ) / sqrt(2) < (1.8 - 1.5)) ...
+        ),  % Rotated Square Region
+        @(x, y, z) (x > 1.9) & (x < 2.5) & (y < 2.4) & (y > 1.8),  % Square Region Shifted
+        @(x, y, z) inpolygon(x, y, ...
+            [2.2, 2.2 - 0.8/2, 2.2 + 0.8/2], ...
+            [1.4 + sqrt(3)/3 * 0.8, 1.4 - sqrt(3)/6 * 0.8, 1.4 - sqrt(3)/6 * 0.8])  % Triangle
+    };
+
+    % Base FEM Model (same for all cases)
+    plain = mk_image(mdl, 10, 'Plain');
+    plain.fwd_model.stimulation = stim;
+    plain.fwd_solve.get_all_meas = 1;
+    plain_data = fwd_solve(plain);
+    plain_volts = rmfield(plain, 'elem_data');
+    plain_volts.node_data = plain_data.volt(:,1);
+
+    % Create figure
+    figure();
+    tiledlayout(4,3, 'TileSpacing', 'Compact', 'Padding', 'Compact');
+
+    % Loop through each select function
+    for i = 1:length(select_fcns)
+        select_fcn = select_fcns{i};
+
+        % Generate FEM model with perturbation
+        perturbed = mk_image(mdl, 10, 'Perturbed');
+        perturbed.fwd_model.stimulation = stim;
+        perturbed.elem_data = 10 + 0.1 * elem_select(mdl, select_fcn);
+        perturbed.fwd_solve.get_all_meas = 1;
+        perturbed_data = fwd_solve(perturbed);
+        perturbed_volts = rmfield(perturbed, 'elem_data');
+        perturbed_volts.node_data = perturbed_data.volt(:,1);
+
+        % Subplot 1: Base FEM Model (No perturbation)
+        nexttile;
+        show_fem(plain);
+        title(sprintf('Base FEM (%d)', i));
+
+        % Subplot 2: FEM Model with Perturbation
+        nexttile;
+        show_fem(perturbed);
+        title(sprintf('Perturbed FEM (%d)', i));
+
+        % Subplot 3: Voltage difference
+        nexttile;
+        perturbed_volts.node_data = perturbed_volts.node_data - plain_volts.node_data;
+        show_fem_enhanced(perturbed_volts);
+        title('Voltage Difference to Homogeneous');
+    end
+
+    sgtitle('Comparison of Different Select Functions');
 end

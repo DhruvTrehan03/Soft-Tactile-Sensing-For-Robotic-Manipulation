@@ -1,0 +1,794 @@
+clear
+load("topChannels_corr.mat");
+%plotElectrodeChannels('896',sorted_indices ,169)
+%plotTopChannelsCirclesPairs('896',sorted_indices ,25)
+%plotElectrodeUsage('896', sorted_indices,25)
+% plotTopChannelsWithSummary('896', sorted_indices,25)
+
+plotTopChannelsSummary('896', sorted_indices,169)
+
+function plotElectrodeChannels(electrodeType, channel_list, no_channels)
+    % Load the data
+    load("oppad32.mat");
+    load("electrodeposition.mat")
+
+    % % Set dimensions and gap
+    % height = 30; % height in mm
+    % width = 24; % width in mm
+    % gap = 3; % gap between electrodes in mm
+    % 
+    % % Calculate the number of electrodes
+    % num_vert = height / gap + 1; % +1 to include corners
+    % num_horiz = width / gap + 1;
+    % 
+    % % Generate electrode positions
+    % left_side = [zeros(num_vert, 1), (0:gap:gap*(num_vert-1))'];           % Left side
+    % right_side = [width * ones(num_vert, 1), (0:gap:gap*(num_vert-1))'];   % Right side
+    % bottom_side = [(0:gap:gap*(num_horiz-1))', zeros(num_horiz, 1)];       % Bottom side
+    % top_side = [(0:gap:gap*(num_horiz-1))', height * ones(num_horiz, 1)];  % Top side
+    % electrodepositions = unique([left_side; right_side; bottom_side; top_side], 'rows');
+
+    % Determine number of channels based on electrodeType
+    if strcmp(electrodeType, '896')
+        totalChannels = 896;
+        loopIndices = channel_list(1:no_channels); % Change this range for different visualizations
+    elseif strcmp(electrodeType, '1024')
+        totalChannels = 1024;
+        loopIndices = 1:length(oppads_withzeros); % Adjust range for 1024 logic
+    else
+        error('Invalid electrode type. Use "896" or "1024".');
+    end
+
+    % Set up the figure for plotting
+    figure;
+    hold on;
+    scatter(electrodepositions(:, 1), electrodepositions(:, 2), 30, "k", "filled", 'DisplayName', 'Electrodes');
+    title(sprintf('Electrode Frame and Channels (%s Electrodes)', electrodeType), 'FontSize', 14);
+    xlabel('X Position (mm)', 'FontSize', 12);
+    ylabel('Y Position (mm)', 'FontSize', 12);
+    grid on;
+    axis equal;
+    xlim([-2, 35 + 2]);
+    ylim([-2, 30 + 2]);
+
+    % Flags to add legend entries only once
+    injectionPathPlotted = false;
+    measurementPathPlotted = false;
+    c = 0;
+    % Plot the channels
+    for i = loopIndices
+        c =c+1;
+        % Plot injection electrodes and path
+        if ~injectionPathPlotted
+            plot(electrodepositions(oppads(i, 1:2), 1), electrodepositions(oppads(i, 1:2), 2), ...
+                "r-", "LineWidth", 2, 'DisplayName', 'Injection Path');
+            injectionPathPlotted = true;
+        else
+            plot(electrodepositions(oppads(i, 1:2), 1), electrodepositions(oppads(i, 1:2), 2), ...
+                "r-", "LineWidth", 2, 'HandleVisibility', 'off');
+        end
+        scatter(electrodepositions(oppads(i, 1:2), 1), electrodepositions(oppads(i, 1:2), 2), ...
+            50, "r", "filled", 'HandleVisibility', 'off');
+
+        % Plot measurement electrodes and path
+        % if ~measurementPathPlotted
+        %     plot(electrodepositions(oppads(i, 3:4), 1), electrodepositions(oppads(i, 3:4), 2), ...
+        %         "b-", "LineWidth", 2, 'DisplayName', 'Measurement Path');
+        %     measurementPathPlotted = true;
+        % else
+        %     plot(electrodepositions(oppads(i, 3:4), 1), electrodepositions(oppads(i, 3:4), 2), ...
+        %         "b-", "LineWidth", 2, 'HandleVisibility', 'off');
+        % end
+        % scatter(electrodepositions(oppads(i, 3:4), 1), electrodepositions(oppads(i, 3:4), 2), ...
+        %     50, "b", "filled", 'HandleVisibility', 'off');
+
+        % Update title with current channel
+        title(sprintf('Plotted %d of %d', c, no_channels), 'FontSize', 14);
+        % pause(0.1); % Pause for visualization
+    end
+
+    % Finalize the plot
+    legend('Location', 'northeastoutside');
+    hold off;
+ end
+
+function plotTopChannelsCirclesPairs(electrodeType, channel_list, no_channels)
+    % Load the data
+    load("oppad32.mat");
+    load("electrodeposition.mat");
+
+    % Determine number of channels based on electrodeType
+    if strcmp(electrodeType, '896')
+        totalChannels = 896;
+        loopIndices = channel_list(1:no_channels); % Top N channels
+    elseif strcmp(electrodeType, '1024')
+        totalChannels = 1024;
+        loopIndices = 1:length(oppads_withzeros); % Adjust range for 1024 logic
+    else
+        error('Invalid electrode type. Use "896" or "1024".');
+    end
+
+    % Set up figures for injection and read pairings
+    figure_inject = figure;
+    figure_read = figure;
+
+    % Determine subplot grid layout
+    numRows = ceil(sqrt(no_channels));
+    numCols = ceil(no_channels / numRows);
+
+    % Loop over the top channels and plot for both injection and read pairs
+    for i = 1:no_channels
+        channel_idx = loopIndices(i);
+
+        % --- Injection Pairing Plot ---
+        figure(figure_inject);
+        subplot(numRows, numCols, i);
+        hold on;
+        scatter(electrodepositions(:, 1), electrodepositions(:, 2), 30, "k", "filled", 'DisplayName', 'Electrodes');
+        scatter(electrodepositions(oppads(channel_idx, 1:2), 1), ...
+                electrodepositions(oppads(channel_idx, 1:2), 2), ...
+                100, "r", "filled", 'DisplayName', 'Injection Pair');
+        title(sprintf('Injection Channel %d', channel_idx), 'FontSize', 10);
+        xlabel('X (mm)', 'FontSize', 8);
+        ylabel('Y (mm)', 'FontSize', 8);
+        grid on;
+        axis equal;
+        xlim([-2, 35 + 2]);
+        ylim([-2, 30 + 2]);
+        hold off;
+
+        % --- Read Pairing Plot ---
+        figure(figure_read);
+        subplot(numRows, numCols, i);
+        hold on;
+        scatter(electrodepositions(:, 1), electrodepositions(:, 2), 30, "k", "filled", 'DisplayName', 'Electrodes');
+        scatter(electrodepositions(oppads(channel_idx, 3:4), 1), ...
+                electrodepositions(oppads(channel_idx, 3:4), 2), ...
+                100, "b", "filled", 'DisplayName', 'Read Pair');
+        title(sprintf('Read Channel %d', channel_idx), 'FontSize', 10);
+        xlabel('X (mm)', 'FontSize', 8);
+        ylabel('Y (mm)', 'FontSize', 8);
+        grid on;
+        axis equal;
+        xlim([-2, 35 + 2]);
+        ylim([-2, 30 + 2]);
+        hold off;
+    end
+
+    % Finalize figures with super titles
+    figure(figure_inject);
+    sgtitle(sprintf('Top %d Channels - Injection Pairings', no_channels), 'FontSize', 14);
+
+    figure(figure_read);
+    sgtitle(sprintf('Top %d Channels - Read Pairings', no_channels), 'FontSize', 14);
+end
+
+function plotElectrodeUsage(electrodeType, channel_list, no_channels)
+    % Load the data
+    load("oppad32.mat");
+    load("electrodeposition.mat");
+
+    % Determine the number of channels based on electrodeType
+    if strcmp(electrodeType, '896')
+        totalChannels = 896;
+        loopIndices = channel_list(1:no_channels); % Top N channels
+    elseif strcmp(electrodeType, '1024')
+        totalChannels = 1024;
+        loopIndices = 1:length(oppads_withzeros); % Adjust range for 1024 logic
+    else
+        error('Invalid electrode type. Use "896" or "1024".');
+    end
+
+    % Initialize frequency counters for electrodes
+    num_electrodes = size(electrodepositions, 1); % Total electrodes
+    inject_usage = zeros(num_electrodes, 1); % Frequency of injection electrodes
+    read_usage = zeros(num_electrodes, 1); % Frequency of read electrodes
+
+    % Count the usage of each electrode in injection and read pairings
+    for i = loopIndices
+        inject_usage(oppads(i, 1)) = inject_usage(oppads(i, 1)) + 1; % Increment for first inject electrode
+        inject_usage(oppads(i, 2)) = inject_usage(oppads(i, 2)) + 1; % Increment for second inject electrode
+        read_usage(oppads(i, 3)) = read_usage(oppads(i, 3)) + 1; % Increment for first read electrode
+        read_usage(oppads(i, 4)) = read_usage(oppads(i, 4)) + 1; % Increment for second read electrode
+    end
+
+    % --- Plot Heatmaps ---
+    % Injection usage heatmap
+    figure;
+    scatter(electrodepositions(:, 1), electrodepositions(:, 2), 200, inject_usage, "filled");
+    colorbar;
+    colormap('hot');
+    title(sprintf('Injection Electrode Usage Heatmap (Top %d Channels)', no_channels), 'FontSize', 14);
+    xlabel('X Position (mm)', 'FontSize', 12);
+    ylabel('Y Position (mm)', 'FontSize', 12);
+    axis equal;
+    grid on;
+
+    % Read usage heatmap
+    figure;
+    scatter(electrodepositions(:, 1), electrodepositions(:, 2), 200, read_usage, "filled");
+    colorbar;
+    colormap('winter');
+    title(sprintf('Read Electrode Usage Heatmap (Top %d Channels)', no_channels), 'FontSize', 14);
+    xlabel('X Position (mm)', 'FontSize', 12);
+    ylabel('Y Position (mm)', 'FontSize', 12);
+    axis equal;
+    grid on;
+end
+
+function plotTopChannelsVectors(electrodeType, channel_list, no_channels)
+    % Load the data
+    load("oppad32.mat");
+    load("electrodeposition.mat");
+
+    % Determine number of channels based on electrodeType
+    if strcmp(electrodeType, '896')
+        totalChannels = 896;
+        loopIndices = channel_list(1:no_channels); % Top N channels
+    elseif strcmp(electrodeType, '1024')
+        totalChannels = 1024;
+        loopIndices = 1:length(oppads_withzeros); % Adjust range for 1024 logic
+    else
+        error('Invalid electrode type. Use "896" or "1024".');
+    end
+
+    % Set up the figure for subplots
+    figure;
+    numRows = ceil(sqrt(no_channels));
+    numCols = ceil(no_channels / numRows);
+
+    % Loop over the top channels and plot each in a subplot
+    for i = 1:no_channels
+        subplot(numRows, numCols, i);
+        channel_idx = loopIndices(i);
+
+        % Get electrode positions for the pair
+        p1 = electrodepositions(oppads(channel_idx, 1), :); % Start of the pair
+        p2 = electrodepositions(oppads(channel_idx, 2), :); % End of the pair
+
+        % Compute midpoint and vector components
+        midpoint = (p1 + p2) / 2;
+        vector = p2 - p1;
+
+        % Plot all electrodes
+        hold on;
+        scatter(electrodepositions(:, 1), electrodepositions(:, 2), 30, "k", "filled", 'DisplayName', 'Electrodes');
+
+        % Highlight the electrode pair
+        scatter([p1(1), p2(1)], [p1(2), p2(2)], 100, "r", "filled", 'DisplayName', 'Channel Electrodes');
+
+        % Plot vector with arrow
+        quiver(midpoint(1), midpoint(2), vector(1), vector(2), 0, ...
+            'Color', 'b', 'LineWidth', 1.5, 'MaxHeadSize', 0.5, 'DisplayName', 'Direction Vector');
+
+        % Configure the plot appearance
+        title(sprintf('Channel %d', channel_idx), 'FontSize', 10);
+        xlabel('X (mm)', 'FontSize', 8);
+        ylabel('Y (mm)', 'FontSize', 8);
+        grid on;
+        axis equal;
+        xlim([-2, 35 + 2]);
+        ylim([-2, 30 + 2]);
+        hold off;
+    end
+
+    % Finalize the figure
+    sgtitle(sprintf('Top %d Channels - Vectors', no_channels), 'FontSize', 14); % Super-title
+end
+
+function plotTopChannelsWithSummary(electrodeType, channel_list, no_channels)
+    % Load the data
+    load("oppad32.mat");
+    load("electrodeposition.mat");
+
+    % Determine number of channels based on electrodeType
+    if strcmp(electrodeType, '896')
+        totalChannels = 896;
+        loopIndices = channel_list(1:no_channels); % Top N channels
+    elseif strcmp(electrodeType, '1024')
+        totalChannels = 1024;
+        loopIndices = 1:length(oppads_withzeros); % Adjust range for 1024 logic
+    else
+        error('Invalid electrode type. Use "896" or "1024".');
+    end
+
+    % Initialize arrays for aggregate summary
+    injection_midpoints = [];
+    injection_vectors = [];
+    read_midpoints = [];
+    read_vectors = [];
+
+    % Set up the figure for subplots
+    figure;
+    numRows = ceil(sqrt(no_channels));
+    numCols = ceil(no_channels / numRows);
+
+    % Loop over the top channels and plot each in a subplot
+    for i = 1:no_channels
+        subplot(numRows, numCols, i);
+        channel_idx = loopIndices(i);
+
+        % Get electrode positions for the injection pair
+        p1_inj = electrodepositions(oppads(channel_idx, 1), :); % Start of the injection pair
+        p2_inj = electrodepositions(oppads(channel_idx, 2), :); % End of the injection pair
+        midpoint_inj = (p1_inj + p2_inj) / 2; % Midpoint
+        vector_inj = p2_inj - p1_inj; % Vector from p1 to p2
+
+        % Store for aggregate summary
+        injection_midpoints = [injection_midpoints; midpoint_inj];
+        injection_vectors = [injection_vectors; vector_inj];
+
+        % Plot the injection pair
+        hold on;
+        scatter(electrodepositions(:, 1), electrodepositions(:, 2), 30, "k", "filled", 'DisplayName', 'Electrodes');
+        scatter([p1_inj(1), p2_inj(1)], [p1_inj(2), p2_inj(2)], 100, "r", "filled", 'DisplayName', 'Injection Pair');
+        quiver(midpoint_inj(1), midpoint_inj(2), vector_inj(1), vector_inj(2), 0, ...
+            'Color', 'r', 'LineWidth', 1.5, 'MaxHeadSize', 0.5, 'DisplayName', 'Injection Vector');
+
+        % Get electrode positions for the read pair
+        p1_read = electrodepositions(oppads(channel_idx, 3), :); % Start of the read pair
+        p2_read = electrodepositions(oppads(channel_idx, 4), :); % End of the read pair
+        midpoint_read = (p1_read + p2_read) / 2; % Midpoint
+        vector_read = p2_read - p1_read; % Vector from p1 to p2
+
+        % Store for aggregate summary
+        read_midpoints = [read_midpoints; midpoint_read];
+        read_vectors = [read_vectors; vector_read];
+
+        % Plot the read pair
+        scatter([p1_read(1), p2_read(1)], [p1_read(2), p2_read(2)], 100, "b", "filled", 'DisplayName', 'Read Pair');
+        quiver(midpoint_read(1), midpoint_read(2), vector_read(1), vector_read(2), 0, ...
+            'Color', 'b', 'LineWidth', 1.5, 'MaxHeadSize', 0.5, 'DisplayName', 'Read Vector');
+
+        % Configure the plot appearance
+        title(sprintf('Channel %d', channel_idx), 'FontSize', 10);
+        xlabel('X (mm)', 'FontSize', 8);
+        ylabel('Y (mm)', 'FontSize', 8);
+        grid on;
+        axis equal;
+        xlim([-2, 35 + 2]);
+        ylim([-2, 30 + 2]);
+        hold off;
+    end
+
+    % Plot the aggregate summary of injection vectors
+    figure;
+    hold on;
+    scatter(electrodepositions(:, 1), electrodepositions(:, 2), 30, "k", "filled", 'DisplayName', 'Electrodes');
+    quiver(injection_midpoints(:, 1), injection_midpoints(:, 2), injection_vectors(:, 1), injection_vectors(:, 2), 0, ...
+        'Color', 'r', 'LineWidth', 1, 'MaxHeadSize', 0.5, 'DisplayName', 'Injection Vectors');
+
+    % Plot the average injection vector
+    avg_vector_inj = mean(injection_vectors, 1);
+    avg_midpoint_inj = mean(injection_midpoints, 1);
+    quiver(avg_midpoint_inj(1), avg_midpoint_inj(2), avg_vector_inj(1), avg_vector_inj(2), 0, ...
+        'Color', 'm', 'LineWidth', 2, 'MaxHeadSize', 1, 'DisplayName', 'Avg Injection Vector');
+
+    % Configure the aggregate plot for injection vectors
+    title('Aggregate Summary of Injection Vectors', 'FontSize', 14);
+    xlabel('X Position (mm)', 'FontSize', 12);
+    ylabel('Y Position (mm)', 'FontSize', 12);
+    legend('Location', 'northeastoutside');
+    grid on;
+    axis equal;
+    xlim([-2, 35 + 2]);
+    ylim([-2, 30 + 2]);
+    hold off;
+
+    % Plot the aggregate summary of read vectors
+    figure;
+    hold on;
+    scatter(electrodepositions(:, 1), electrodepositions(:, 2), 30, "k", "filled", 'DisplayName', 'Electrodes');
+    quiver(read_midpoints(:, 1), read_midpoints(:, 2), read_vectors(:, 1), read_vectors(:, 2), 0, ...
+        'Color', 'b', 'LineWidth', 1, 'MaxHeadSize', 0.5, 'DisplayName', 'Read Vectors');
+
+    % Plot the average read vector
+    avg_vector_read = mean(read_vectors, 1);
+    avg_midpoint_read = mean(read_midpoints, 1);
+    quiver(avg_midpoint_read(1), avg_midpoint_read(2), avg_vector_read(1), avg_vector_read(2), 0, ...
+        'Color', 'c', 'LineWidth', 2, 'MaxHeadSize', 1, 'DisplayName', 'Avg Read Vector');
+
+    % Configure the aggregate plot for read vectors
+    title('Aggregate Summary of Read Vectors', 'FontSize', 14);
+    xlabel('X Position (mm)', 'FontSize', 12);
+    ylabel('Y Position (mm)', 'FontSize', 12);
+    legend('Location', 'northeastoutside');
+    grid on;
+    axis equal;
+    xlim([-2, 35 + 2]);
+    ylim([-2, 30 + 2]);
+    hold off;
+
+    figure()
+    hold on;
+    % Plot the average injection vector
+    avg_vector_inj = mean(injection_vectors, 1);
+    avg_vector_inj = avg_vector_inj / norm(avg_vector_inj) * 10; % Normalize and scale
+    avg_midpoint_inj = mean(injection_midpoints, 1);
+    quiver(avg_midpoint_inj(1), avg_midpoint_inj(2), avg_vector_inj(1), avg_vector_inj(2), 0, ...
+        'Color', 'r', 'LineWidth', 2, 'MaxHeadSize', 1, 'DisplayName', 'Avg Injection Vector');
+
+    % Plot the average read vector
+    avg_vector_read = mean(read_vectors, 1);
+    avg_vector_read = avg_vector_read / norm(avg_vector_read) * 10; % Normalize and scale
+    avg_midpoint_read = mean(read_midpoints, 1);
+    quiver(avg_midpoint_read(1), avg_midpoint_read(2), avg_vector_read(1), avg_vector_read(2), 0, ...
+        'Color', 'b', 'LineWidth', 2, 'MaxHeadSize', 1, 'DisplayName', 'Avg Read Vector');    
+
+    legend('AutoUpdate','off');
+    % Add a centered axis
+    line([0, 36], [14, 14], 'Color', 'k', 'LineStyle', '--', 'LineWidth', 1.5 ); % X-axis
+    line([18, 18], [0, 28], 'Color', 'k', 'LineStyle', '--', 'LineWidth', 1.5); % Y-axis
+    
+
+    scatter(electrodepositions(:, 1), electrodepositions(:, 2), 30, "k", "filled", 'DisplayName', 'Electrodes');
+    hold off;
+    
+    figure()
+    hold on;
+    
+    % Plot the normalized average vectors starting from (0,0)
+    quiver(0, 0, avg_vector_inj(1), avg_vector_inj(2), 0, ...
+        'Color', 'r', 'LineWidth', 2, 'MaxHeadSize', 2, 'DisplayName', 'Normalized Avg Injection Vector');
+    quiver(0, 0, avg_vector_read(1), avg_vector_read(2), 0, ...
+        'Color', 'b', 'LineWidth', 2, 'MaxHeadSize', 2, 'DisplayName', 'Normalized Avg Read Vector');
+    legend('AutoUpdate','off');
+    % Add a centered axis
+    line([-12, 12], [0, 0], 'Color', 'k', 'LineStyle', '--', 'LineWidth', 1.5 ); % X-axis
+    line([0, 0], [-12, 12], 'Color', 'k', 'LineStyle', '--', 'LineWidth', 1.5); % Y-axis
+    
+    % Configure plot appearance
+    title('Normalized Average Vectors (Centered)');
+    xlabel('X Axis');
+    ylabel('Y Axis');
+    legend('Location', 'northeastoutside');
+    grid on;
+    axis equal; % Ensure equal scaling for X and Y axes
+    xlim([-12, 12]); % Define axis limits
+    ylim([-12, 12]);
+    hold off;
+end
+
+function plotTopChannelsSummary(electrodeType, channel_list, no_channels)
+    % Load the data
+    load("oppad32.mat");
+    load("electrodeposition.mat");
+    % Determine number of channels based on electrodeType
+    if strcmp(electrodeType, '896')
+        totalChannels = 896;
+        loopIndices = channel_list(1:no_channels); % Top N channels
+    elseif strcmp(electrodeType, '1024')
+        totalChannels = 1024;
+        loopIndices = 1:length(oppads_withzeros); % Adjust range for 1024 logic
+    else
+        error('Invalid electrode type. Use "896" or "1024".');
+    end
+
+    % Initialize arrays for aggregate summary
+    injection_midpoints = [];
+    injection_vectors = [];
+    read_midpoints = [];
+    read_vectors = [];
+
+    % Set up the figure for subplots
+    numRows = ceil(sqrt(no_channels));
+    numCols = ceil(no_channels / numRows);
+
+    % Loop over the top channels and plot each in a subplot
+    for i = 1:no_channels
+        channel_idx = loopIndices(i);
+
+        % Get electrode positions for the injection pair
+        p1_inj = electrodepositions(oppads(channel_idx, 1), :); % Start of the injection pair
+        p2_inj = electrodepositions(oppads(channel_idx, 2), :); % End of the injection pair
+        midpoint_inj = (p1_inj + p2_inj) / 2; % Midpoint
+        vector_inj = p2_inj - p1_inj; % Vector from p1 to p2
+
+        % Store for aggregate summary
+        injection_midpoints = [injection_midpoints; midpoint_inj];
+        injection_vectors = [injection_vectors; vector_inj];
+
+        % Get electrode positions for the read pair
+        p1_read = electrodepositions(oppads(channel_idx, 3), :); % Start of the read pair
+        p2_read = electrodepositions(oppads(channel_idx, 4), :); % End of the read pair
+        midpoint_read = (p1_read + p2_read) / 2; % Midpoint
+        vector_read = p2_read - p1_read; % Vector from p1 to p2
+
+        % Store for aggregate summary
+        read_midpoints = [read_midpoints; midpoint_read];
+        read_vectors = [read_vectors; vector_read];
+    end
+
+    % Plot the aggregate summary of injection vectors
+    figure;
+    hold on;
+    scatter(electrodepositions(:, 1), electrodepositions(:, 2), 30, "k", "filled", 'DisplayName', 'Electrodes');
+    quiver(injection_midpoints(:, 1), injection_midpoints(:, 2), injection_vectors(:, 1), injection_vectors(:, 2), 0, ...
+        'Color', 'r', 'LineWidth', 1, 'MaxHeadSize', 0.5, 'DisplayName', 'Injection Vectors');
+
+    % Plot the average injection vector
+    avg_vector_inj = mean(injection_vectors, 1);
+    avg_midpoint_inj = mean(injection_midpoints, 1);
+    quiver(avg_midpoint_inj(1), avg_midpoint_inj(2), avg_vector_inj(1), avg_vector_inj(2), 0, ...
+        'Color', 'm', 'LineWidth', 2, 'MaxHeadSize', 1, 'DisplayName', 'Avg Injection Vector');
+
+
+    % Configure the aggregate plot for read vectors
+    title('Aggregate Summary of Read Vectors', 'FontSize', 14);
+    xlabel('X Position (mm)', 'FontSize', 12);
+    ylabel('Y Position (mm)', 'FontSize', 12);
+    legend('Location', 'northeastoutside');
+    grid on;
+    axis equal;
+    xlim([0, 38]);
+    ylim([0, 28]);
+    hold off;
+
+    cool = figure();
+    hold on;
+
+    % Load the image (with or without transparency)
+    [YourImage, ~, ~] = imread('Figures\\screwdriver.jpg');
+    YourImage = imrotate(YourImage,90);
+    % Define position, size, and rotation
+    x_pos = 7;  % X-position (lower-left corner)
+    y_pos = 4.35;  % Y-position (lower-left corner)
+    scale_factor = 0.01;  % Scale factor (resize the image)
+    rotation_angle = 90;  % Rotation angle in degrees (clockwise)
+    
+    % Get image dimensions
+    [img_height, img_width, ~] = size(YourImage);
+    
+    % Define scaled width and height
+    scaled_width = img_width * scale_factor;
+    scaled_height = img_height * scale_factor;
+    
+    
+    % Define the rotation matrix (for rotation around the center)
+    rotation_matrix = [cosd(rotation_angle), -sind(rotation_angle); sind(rotation_angle), cosd(rotation_angle)];
+    
+    % Compute new corners of the image after rotation
+    % Set the image center as the pivot point for rotation
+    image_center = [x_pos + scaled_width/2, y_pos + scaled_height/2];
+    
+    % Apply rotation to the corners (to get rotated bounding box)
+    corners = [x_pos, y_pos; 
+               x_pos + scaled_width, y_pos;
+               x_pos + scaled_width, y_pos + scaled_height;
+               x_pos, y_pos + scaled_height];
+    
+    % Shift corners to the center, rotate, and then shift back
+    rotated_corners = (rotation_matrix * (corners - image_center)')' + image_center;
+    
+    % Display the image with position, scaling, and rotation
+    image('CData', YourImage, ...
+          'XData', [corners(1, 1), corners(2, 1)], ... % X-position
+          'YData', [corners(1, 2), corners(4, 2)]);
+
+
+
+
+    % Plot the average injection vector
+    avg_vector_inj = mean(injection_vectors, 1);
+    avg_vector_inj = avg_vector_inj / norm(avg_vector_inj) * 10; % Normalize and scale
+    avg_midpoint_inj = mean(injection_midpoints, 1);
+    quiver(avg_midpoint_inj(1), avg_midpoint_inj(2), avg_vector_inj(1), avg_vector_inj(2), 0, ...
+        'Color', 'r', 'LineWidth', 2, 'MaxHeadSize', 1, 'DisplayName', 'Avg Injection Vector');
+
+    % Plot the average read vector
+    avg_vector_read = mean(read_vectors, 1);
+    avg_vector_read = avg_vector_read / norm(avg_vector_read) * 10; % Normalize and scale
+    avg_midpoint_read = mean(read_midpoints, 1);
+    quiver(avg_midpoint_read(1), avg_midpoint_read(2), avg_vector_read(1), avg_vector_read(2), 0, ...
+        'Color', 'b', 'LineWidth', 2, 'MaxHeadSize', 1, 'DisplayName', 'Avg Read Vector');    
+    
+ 
+   
+
+    % Indicate the twisting motion with an arc
+    theta = linspace(-pi/4, pi/4, 50); % Arc from -45 to +45 degrees
+    arc_radius = 1.2; % Radius of the arc
+    arc_x = arc_radius * cos(theta); % X-coordinates of the arc
+    arc_y = arc_radius * sin(theta); % Y-coordinates of the arc
+    plot(4+arc_x, 14+arc_y, 'g', 'LineWidth', 1.5, 'DisplayName', 'Rotation'); % Green arc for rotation
+    plot(28+arc_x, 14+arc_y, 'g', 'LineWidth', 1.5, 'DisplayName', 'Rotation'); % Green arc for rotation
+    
+    circular_arrow(1.2,centre = [2,14], angle = 45, direction= 1,colour= 'b', head2, '-');
+    % circular_arrow(height, centre, angle, direction, colour, head_size)
+    scatter(18,14,'o','filled','c','DisplayName','Centre','LineWidth',2 )
+    legend('AutoUpdate','off')
+    
+    line([0, 0], [28, 0], 'Color', 'k', 'LineWidth', 1.5 );
+    line([36, 36], [28, 0], 'Color', 'k', 'LineWidth', 1.5 );
+    line([0, 36], [28, 28], 'Color', 'k', 'LineWidth', 1.5); 
+    line([0, 36], [0, 0], 'Color', 'k', 'LineWidth', 1.5);
+
+    % Configure the aggregate plot for injection vectors
+    title('Aggregate Summary of Injection Vectors', 'FontSize', 14);
+    xlabel('X Position (mm)', 'FontSize', 12);
+    ylabel('Y Position (mm)', 'FontSize', 12);
+    legend('Location', 'northeastoutside');
+    grid off;
+    axis equal;
+    yline(14,LineStyle="-")
+    xlim([0, 36]);
+    ylim([0, 28]);
+    
+
+    % % Display the screwdriver image with scaling and transparency
+    % image(img, 'XData', [x_pos, x_pos + scaled_width], 'YData', [y_pos, y_pos + scaled_height],'AlphaData',alpha.*transparency_factor);
+    hold off;
+
+    % Plot the aggregate summary of read vectors
+    figure;
+    hold on;
+
+
+
+
+    scatter(electrodepositions(:, 1), electrodepositions(:, 2), 30, "k", "filled", 'DisplayName', 'Electrodes');
+    quiver(read_midpoints(:, 1), read_midpoints(:, 2), read_vectors(:, 1), read_vectors(:, 2), 0, ...
+        'Color', 'b', 'LineWidth', 1, 'MaxHeadSize', 0.5, 'DisplayName', 'Read Vectors');
+
+    % Plot the average read vector
+    avg_vector_read = mean(read_vectors, 1);
+    avg_midpoint_read = mean(read_midpoints, 1);
+    quiver(avg_midpoint_read(1), avg_midpoint_read(2), avg_vector_read(1), avg_vector_read(2), 0, ...
+        'Color', 'c', 'LineWidth', 2, 'MaxHeadSize', 1, 'DisplayName', 'Avg Read Vector');
+
+    legend('AutoUpdate','off');
+    % Add a centered axis
+    line([0, 36], [14, 14], 'Color', 'k', 'LineStyle', '--', 'LineWidth', 1.5 ); % X-axis
+    line([18, 18], [0, 28], 'Color', 'k', 'LineStyle', '--', 'LineWidth', 1.5); % Y-axis
+    ylim([0,28]); 
+    xlim([0,36]);
+    scatter(electrodepositions(:, 1), electrodepositions(:, 2), 30, "k", "filled", 'DisplayName', 'Electrodes');
+    hold off;
+
+    figure()
+    hold on;
+
+    % Plot the normalized average vectors starting from (0,0)
+    quiver(0, 0, avg_vector_inj(1), avg_vector_inj(2), 0, ...
+        'Color', 'r', 'LineWidth', 2, 'MaxHeadSize', 2, 'DisplayName', 'Normalized Avg Injection Vector');
+    quiver(0, 0, avg_vector_read(1), avg_vector_read(2), 0, ...
+        'Color', 'b', 'LineWidth', 2, 'MaxHeadSize', 2, 'DisplayName', 'Normalized Avg Read Vector');
+    legend('AutoUpdate','off');
+    % Add a centered axis
+    line([-12, 12], [0, 0], 'Color', 'k', 'LineStyle', '--', 'LineWidth', 1.5 ); % X-axis
+    line([0, 0], [-12, 12], 'Color', 'k', 'LineStyle', '--', 'LineWidth', 1.5); % Y-axis
+
+    % Configure plot appearance
+    title('Normalized Average Vectors (Centered)');
+    xlabel('X Axis');
+    ylabel('Y Axis');
+    legend('Location', 'northeastoutside');
+    grid on;
+    axis equal; % Ensure equal scaling for X and Y axes
+    xlim([-12, 12]); % Define axis limits
+    ylim([-12, 12]);
+    hold off;
+end
+
+function circular_arrow(figHandle, radius, centre, arrow_angle, angle, direction, colour, head_size, head_style)
+% This is a function designed to draw a circular arrow onto the current
+% figure. It is required that "hold on" must be called before calling this
+% function. 
+%
+% The correct calling syntax is:
+%   circular_arrow(height, centre, angle, direction, colour, head_size)
+%   where:
+%       figHandle - the handle of the figure to be drawn on.
+%       radius - the radius of the arrow. 
+%       centre - a vector containing the desired centre of the circular
+%                   arrow.
+%       arrow_angle - the desired orientation angle of the circular arrow.
+%                   This is measured in degrees counter-clockwise 
+%       angle - the angle between starting and end point of the arrow in
+%                   degrees.
+%       direction - variable set to determine format of arrow head. Use 1
+%                   to get a clockwise arrow, -1 to get a counter clockwise
+%                   arrow, 2 to get a double headed arrow and 0 to get just
+%                   an arc. 
+%       colour (optional) - the desired colour of the arrow, using Matlab's
+%                   <a href="matlab:
+%                   web('https://au.mathworks.com/help/matlab/ref/colorspec.html')">Color Specification</a>. 
+%       head_size (optional) - the size of the arrow head.
+%       head_style (optional) - the style of the arrow head.
+%                   For more information, see <a href="matlab: 
+%                   web('http://au.mathworks.com/help/matlab/ref/annotationarrow-properties.html#property_HeadStyle')">Annotation Arrow Properties</a>.
+%Ensure proper number of arguments
+if (nargin < 6)||(nargin > 9)
+    error(['Wrong number of parameters '...
+        'Enter "help circular_arrow" for more information']);
+end
+% arguments 7, 8 and 9 are optional,
+if nargin < 9
+   head_style = 'vback2';
+end
+if nargin < 8
+   head_size = 10;
+end
+if nargin < 7
+   colour = 'k';
+end
+% display a warning if the headstyle has been specified, but direction has
+% been set to no heads
+if nargin == 9 && direction == 0
+    warning(['Head style specified, but direction set to 0! '...
+        'This will result in no arrow head being displayed.']);
+end
+    
+% Check centre is vector with two points
+[m,n] = size(centre);
+if m*n ~= 2
+    error('Centre must be a two element vector');
+end
+arrow_angle = deg2rad(arrow_angle); % Convert angle to rad
+angle = deg2rad(angle); % Convert angle to rad
+xc = centre(1);
+yc = centre(2);
+% Creating (x, y) values that are in the positive direction along the x
+% axis and the same height as the centre
+x_temp = centre(1) + radius;
+y_temp = centre(2);
+% Creating x & y values for the start and end points of arc
+x1 = (x_temp-xc)*cos(arrow_angle+angle/2) - ...
+        (y_temp-yc)*sin(arrow_angle+angle/2) + xc;
+x2 = (x_temp-xc)*cos(arrow_angle-angle/2) - ...
+        (y_temp-yc)*sin(arrow_angle-angle/2) + xc;
+x0 = (x_temp-xc)*cos(arrow_angle) - ...
+        (y_temp-yc)*sin(arrow_angle) + xc;
+y1 = (x_temp-xc)*sin(arrow_angle+angle/2) + ...
+        (y_temp-yc)*cos(arrow_angle+angle/2) + yc;
+y2 = (x_temp-xc)*sin(arrow_angle-angle/2) + ... 
+        (y_temp-yc)*cos(arrow_angle-angle/2) + yc;
+y0 = (x_temp-xc)*sin(arrow_angle) + ... 
+        (y_temp-yc)*cos(arrow_angle) + yc;
+% Plotting twice to get angles greater than 180
+i = 1;
+% Creating points
+P1 = struct([]);
+P2 = struct([]);
+P1{1} = [x1;y1]; % Point 1 - 1
+P1{2} = [x2;y2]; % Point 1 - 2
+P2{1} = [x0;y0]; % Point 2 - 1
+P2{2} = [x0;y0]; % Point 2 - 1
+centre = [xc;yc]; % guarenteeing centre is the right dimension
+n = 1000; % The number of points in the arc
+v = struct([]);
+    
+while i < 3
+    v1 = P1{i}-centre;
+    v2 = P2{i}-centre;
+    c = det([v1,v2]); % "cross product" of v1 and v2
+    a = linspace(0,atan2(abs(c),dot(v1,v2)),n); % Angle range
+    v3 = [0,-c;c,0]*v1; % v3 lies in plane of v1 and v2 and is orthog. to v1
+    v{i} = v1*cos(a)+((norm(v1)/norm(v3))*v3)*sin(a); % Arc, center at (0,0)
+    plot(v{i}(1,:)+xc,v{i}(2,:)+yc,'Color', colour) % Plot arc, centered at P0
+    i = i + 1;
+end
+position = struct([]);
+% Setting x and y for CW and CCW arrows
+if direction == 1
+    position{1} = [x2 y2 x2-(v{2}(1,2)+xc) y2-(v{2}(2,2)+yc)];
+elseif direction == -1
+    position{1} = [x1 y1 x1-(v{1}(1,2)+xc) y1-(v{1}(2,2)+yc)];
+elseif direction == 2
+    position{1} = [x2 y2 x2-(v{2}(1,2)+xc) y2-(v{2}(2,2)+yc)];
+    position{2} = [x1 y1 x1-(v{1}(1,2)+xc) y1-(v{1}(2,2)+yc)];  
+elseif direction == 0
+    % Do nothing
+else
+    error('direction flag not 1, -1, 2 or 0.');
+end
+% Loop for each arrow head
+i = 1;
+while i < abs(direction) + 1
+    h=annotation('arrow'); % arrow head
+    set(h,'parent', gca, 'position', position{i}, ...
+        'HeadLength', head_size, 'HeadWidth', head_size,...
+        'HeadStyle', head_style, 'linestyle','none','Color', colour);
+    i = i + 1;
+end
+end

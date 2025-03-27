@@ -1,67 +1,71 @@
 clear
 clc
 
-% Prompt user to select devices
-init_left = input('Initialize Left (COM13)? (1 for yes, 0 for no): ');
+% Initialize COM15 (fast) and optionally COM14 (slow)
+init_truth = 1; % Always read from COM15
 init_right = input('Initialize Right (COM14)? (1 for yes, 0 for no): ');
-init_truth = input('Initialize Truth (COM15)? (1 for yes, 0 for no): ');
 
-% Create parallel pool if not already open
-poolobj = gcp('nocreate');
-if isempty(poolobj)
-    parpool; % Start parallel pool
+% Open Serial Ports
+truth = serialport("COM15", 115200);
+truth.Timeout = 1; % Short timeout to avoid blocking
+if init_right
+    right = serialport("COM14", 115200);
+    right.Timeout = 1; % Short timeout to prevent slowdowns
 end
 
-% Get the number of readings
-n = input("What value of n (readings)? ");
+% Send initialization command
+write(truth, "y", "string");
+if init_right, write(right, "y", "string"); end
 
-% Get the current time for unique filenames
-current_time = datetime('now', 'Format', 'yyyy-MM-dd_HH-mm-ss');
+% Get the current time to create unique file names (minute-based)
+current_time = datetime('now', 'Format', 'yyyy-MM-dd_HH-mm');
 time_str = char(current_time);
 save_dir = fullfile('C:\Users\dhruv\Soft-Tactile-Sensing-For-Robotic-Manipulation\Readings\40mm\', time_str);
 mkdir(save_dir)
 
-% Create futures for each device
-futures = [];
+% Get total runtime in seconds instead of number of readings
+runtime = input("How many seconds to collect data? ");
+tic; % Start timing
 
-if init_left
-    futures(end+1) = parfeval(@readSerialData, 1, "COM13", save_dir, 'left', n);
-end
-if init_right
-    futures(end+1) = parfeval(@readSerialData, 1, "COM14", save_dir, 'right', n);
-end
-if init_truth
-    futures(end+1) = parfeval(@readSerialData, 1, "COM15", save_dir, 'truth', n);
-end
+% Initialize data storage
+plotthis_truth = [];
+plotthis_right = [];
 
-% Wait for all tasks to complete
-wait(futures);
-
-disp('All readings completed and saved.');
-
-%% Function to Read Serial Data in Parallel
-function readSerialData(port, save_dir, label, n)
-    device = serialport(port, 115200);
-    device.Timeout = 25;
-    write(device, "y", "string"); % Send initialization command
-    pause(1); % Allow time for response
-
-    plotthis = [];
-
-    for i = 1:n
-        current_time = datenum(datetime('now', 'Format', 'HH:mm:ss.SSS'));
-        try
-            data = str2num(readline(device)); % Read data
-            if ~isempty(data)
-                plotthis = [plotthis; current_time, data];
-            end
-        catch
-            warning("Error reading from %s", port);
-        end
-        pause(0.01); % Small pause to allow different rates
+% Start reading loop
+while toc < runtime  % Run until the set time is reached
+    disp(toc)
+    current_time = datenum(datetime('now', 'Format', 'HH:mm:ss.SSS'));
+    
+    % Read data from COM15 (always)
+    try
+        data_truth = str2num(readline(truth));
+        plotthis_truth = [plotthis_truth; current_time, data_truth]; % Store truth data
+    catch
+        warning("Error reading from COM15");
     end
-
-    % Save data
-    save(fullfile(save_dir, [label, '.mat']), 'plotthis');
-    clear device;
+    
+    % Try reading from COM14 (only if new data is available)
+    if init_right && right.NumBytesAvailable > 0
+        try
+            data_right = str2num(readline(right));
+            plotthis_right = [plotthis_right; current_time, data_right]; % Store only new right data
+        catch
+            warning("Error reading from COM14");
+        end
+    end
+    
+    % Small pause to avoid overwhelming MATLAB
+    pause(0.001);
 end
+
+% Save data
+save(fullfile(save_dir, '10mm_truth.mat'), 'plotthis_truth');
+if init_right && ~isempty(plotthis_right)
+    save(fullfile(save_dir, '10mm_right.mat'), 'plotthis_right');
+end
+
+% Close serial ports
+clear truth;
+if init_right, clear right; end
+
+disp('Data collection complete.');

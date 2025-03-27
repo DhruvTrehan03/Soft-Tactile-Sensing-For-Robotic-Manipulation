@@ -64,20 +64,20 @@ functions = {'Step', ...                            1
             'Linear', ...                           2
             'Differential of a Gaussian (DoG)', ... 3
             'Modulated Gaussian (MG)', ...          4
-            'Experimental (whatever i feel like)'}; ...                5
-function_choice = 4; 
+            'Linear With Cut-Off'}; ...                5
+function_choice = 1; 
 
 press = plain;
 press.elem_data = 1 + elem_select(press.fwd_model, apply_function((function_choice)));
 press.fwd_model.stimulation = stim;
-show_fem(press);
+% show_fem(press);
 Model_Compare = figure("Name", 'Model Comparison');
 %% Plot Results
 plain_data = fwd_solve(plain);
 press_data = fwd_solve(press);
 sim_diff = abs(press_data.meas - plain_data.meas);
 sim_diff = normalize(sim_diff);
-correlation = envelope_correlation(data_diff, sim_diff);
+[correlation,env1,env2] = envelope_correlation(data_diff, sim_diff);
 
 
 subplot_idx = 1;
@@ -123,24 +123,18 @@ else
     smooth_window = 30;  % Adjust as needed
     
     subplot(3, 2, [subplot_idx, subplot_idx + 1]);
-    plot(data_diff, 'b'); hold on;  % Original data in blue
-    [env_data_diff, ~] = envelope(data_diff, 10, 'peak');
-    env_data_diff_smooth = smooth(env_data_diff, smooth_window, 'moving'); % Apply smoothing
-    plot(env_data_diff_smooth, 'r', 'LineWidth', 1.5); % Smoothed envelope in red
+    % plot(data_diff, 'b', 'DisplayName', 'Data Difference'); hold on;  % Original data in blue
+    plot(env1, 'r', 'LineWidth', 1.5,'DisplayName','Data Difference Envelope'); % Smoothed envelope in red
     hold off;
     title('Data Difference with Envelope');
-    legend('Data Difference', 'Envelope');
+    legend();
     
     subplot(3, 2, [subplot_idx + 2, subplot_idx + 3]);
-    plot(sim_diff, 'b'); hold on;  % Simulation difference in blue
-    [env_sim_diff, ~] = envelope(sim_diff, 10, 'peak');
-    env_sim_diff_smooth = smooth(env_sim_diff, smooth_window, 'moving'); % Apply smoothing
-    plot(env_sim_diff_smooth, 'r', 'LineWidth', 1.5); % Smoothed envelope in red
+    % plot(sim_diff, 'b','DisplayName', 'Simulation Difference'); hold on;  % Simulation difference in blue
+    plot(env2, 'r', 'LineWidth', 1.5, 'DisplayName','Simulation Difference Envelope'); % Smoothed envelope in red
     hold off;
     title('Simulation Difference with Envelope');
-    legend('Simulation Difference', 'Envelope');
-
-    
+    legend();
     
     subplot(3, 2, [subplot_idx + 4, subplot_idx + 5])
     text(0.45, 0.5, num2str(correlation), "FontSize", 16);
@@ -148,7 +142,7 @@ else
     title({'Correlation Score'})
 end
 %% Plot different models
-plot_fem_and_cross_section(mdl,functions);
+% plot_fem_and_cross_section(mdl,functions);
 
 %% Function: Finding Best Shift
 function best_shift = find_best_shift(data_diff, sim_diff, shift_step, max_shifts)
@@ -174,20 +168,20 @@ function select_fcn = apply_function(choice)
     sigma = 1;
 
     switch lower(choice)
-        case 1      %"differential of a gaussian"
-            select_fcn = @(x, y, z) -(y - centre) .* exp(-((y - centre).^2) / (2 * sigma^2)) / (sigma^2);
-        case 2      %"step"
+        case 1      %"step"
             select_fcn = @(x, y, z) 0.5 * (y > centre) - 0.5 * (y <= centre);
-        case 3      %"linear"
+        case 2      %"linear"
             select_fcn = @(x, y, z) (y - centre) / sigma;
+        case 3      %"differential of a gaussian"
+            select_fcn = @(x, y, z) -(y - centre) .* exp(-((y - centre).^2) / (2 * sigma^2)) / (sigma^2);
         case 4      %"modulated gaussian"
             sigma = 0.4;
             k = 5;
             select_fcn = @(x,y,z) exp(-(y - centre).^2 / (2 * sigma^2)) .*(cos(k * (y-centre)));
         case 5      %modulated difference of a gaussian
             sigma = 0.2;
-            k = 4;
-            select_fcn = @(x,y,z) (y>centre).*exp(-(y - centre).^2 / (2 * sigma^2)) .*(cos(k * (y-centre))) + 0.1* exp(-(y - centre).^2 / (2 * sigma^2));
+            k = 3;
+            select_fcn = @(x,y,z)(y>centre-k/2).*(y<centre+k/2).*(y-centre)/sigma;
         otherwise
             error("Unknown function choice: %s", choice);
     end
@@ -221,12 +215,14 @@ function plot_fem_and_cross_section(mdl, function_choices)
 
         % **Top row: FEM Model**
         subplot(2, num_models, i);
+        % figure()
         show_fem(img);
         title(sprintf('FEM: %s', strrep(function_choice, '_', ' ')));
         axis tight;
 
         % **Bottom row: Cross-section plot**
         subplot(2, num_models, num_models + i);
+        % figure();
         conductivity_values = select_fcn(x_vals,y_vals,0);
         plot(y_vals, conductivity_values, 'LineWidth', 2);
         xlabel('Y Position');
@@ -257,10 +253,19 @@ function best_shift = find_best_shift_envelope(data_diff, sim_diff, shift_step, 
     fprintf('Best shift: %d samples (Envelope Correlation: %.4f)\n', best_shift, max_corr);
 end
 
-function corr_score = envelope_correlation(data1, data2)
-    % Compute the envelope of both signals
-    [env1, ~] = envelope(data1, 10, 'peak');
-    [env2, ~] = envelope(data2, 10, 'peak');
+function [corr_score,env1,env2] = envelope_correlation(data1, data2)
+    % Extend the signals to reduce edge effects
+    data1_ext = [data1; data1; data1];  % Triplicate the data
+    data2_ext = [data2; data2; data2];
+
+    % Compute the envelope of the extended signals
+    [env1_ext, ~] = envelope(data1_ext, 50, 'peak');
+    [env2_ext, ~] = envelope(data2_ext, 50, 'peak');
+
+    % Extract only the middle section to avoid edge artifacts
+    N = length(data1);
+    env1 = env1_ext(N+1:2*N);
+    env2 = env2_ext(N+1:2*N);
 
     % Smooth envelopes
     windowSize = 5;
@@ -269,6 +274,11 @@ function corr_score = envelope_correlation(data1, data2)
     env1 = filter(b, a, env1);
     env2 = filter(b, a, env2);
 
+    env1 = (env1 - min(env1)) / (max(env1) - min(env1));
+    env2 = (env2 - min(env2)) / (max(env2) - min(env2));
+
     % Compute correlation
-    corr_score = corr(env1, env2, 'Type', 'Spearman');  % Spearman correlation for trend matching
+    corr_score = corr(env1, env2, 'Type', 'Spearman');  
+    % corr_score = dtw(env1, env2);
+    % corr_score = mean((env1 - env2).^2);  % Lower MSE = more simila
 end

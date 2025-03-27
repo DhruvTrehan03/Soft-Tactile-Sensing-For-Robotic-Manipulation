@@ -11,20 +11,21 @@ resolution = 5000;
 [EIT,EIT_Time, retained_indices] = preprocess(Left_Data, burn_in,end_proportion);
 [ Torque_Interp, EIT_Interp, Time] = interpolate_data(Torque_Time, Torque, EIT_Time, EIT, resolution, false);
 Time = Time-Time(1);
-[sorted_scores,sorted_indices] = analyze_channels(EIT_Interp,Torque_Interp,Time, 'correlation');
-
+[sorted_scores,sorted_indices] = analyze_channels(EIT_Interp,Torque_Interp,Time, 'abscorr');
+% 
 figure()
 plotLine(Torque_Interp, Time); %Time of torque is 0.00403555 index 495-504 corresponding to index 845 - 862
-figure();
-clipped_data = clip(Left_Data(861,2:end),0,0.45);
-clipped_data_hom = clip(Left_Data(end,2:end),0,0.45);
-plot(clipped_data);
-plot(Left_Data(:,2:end))
-save("SavedVariables\TorqueSliceHom.mat",'clipped_data_hom')
-save("SavedVariables\TorqueSlice.mat",'clipped_data')
+% figure();
+% clipped_data = clip(Left_Data(861,2:end),0,0.45);
+% clipped_data_hom = clip(Left_Data(end,2:end),0,0.45);
+% plot(clipped_data);
+% plot(Left_Data(:,2:end))
+% save("SavedVariables\TorqueSliceHom.mat",'clipped_data_hom')
+% save("SavedVariables\TorqueSlice.mat",'clipped_data')
 
-figure();
-plotHeatmap(EIT,EIT_Time)
+% figure();
+% plotHeatmap(EIT(:,sorted_indices),EIT_Time)
+fontsize(20,"points")
 %save("topChannels_corr.mat", "sorted_indices")
 %[errors]  = top_channel_regression_analysis(EIT_Interp,Torque_Interp,Time,sorted_indices,896);
 %save("errors_corr.mat","errors")
@@ -173,12 +174,12 @@ function plotHeatmap(data,time)
     num_pairings = size(data, 2);
     
     mask = false(size(time));  % Initialize a mask of the same size as the array
-    mask(1:80:end) = true;       % Set every nth position to true
+    mask(1:round(end/10):end) = true;       % Set every nth position to true
     % Replace all elements not in the nth positions with NaN
     time(~mask) = NaN;         % Replace elements where mask is false with NaN
     % Convert time column to datetime
     time_labels = datetime(time, 'ConvertFrom', 'datenum'); 
-    time_labels = datetime(time_labels, "Format", "HH:mm:ss.SSS");
+    time_labels = datetime(time_labels, "Format", "HH:mm");
    
     y_labels = 0:num_pairings-1;
     mask = false(size(y_labels));  % Initialize a mask of the same size as the array
@@ -192,6 +193,8 @@ function plotHeatmap(data,time)
     h = heatmap(data_normalised,'Colormap', hot, 'ColorbarVisible', 'on');
     h.XDisplayLabels = time_labels;
     h.YDisplayLabels = y_labels;
+    s=struct(h);
+    s.XAxis.TickLabelRotation = 0;
     % Label the axes and add a title
     xlabel('Time');
     ylabel('Electrode Pairing Index');

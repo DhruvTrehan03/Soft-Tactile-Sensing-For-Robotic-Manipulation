@@ -12,7 +12,7 @@ show_first_three_subplots = 0; % Set to false to hide first 3 subplots
 if initialise
     clear
     load_data = 1;       % Set to true to reload data
-    find_shift = 0;      % Set to true to find the best shift
+    find_shift = 1;      % Set to true to find the best shift
     show_first_three_subplots = 1; % Set to false to hide first 3 subplots
     run('Source/eidors-v3.11-ng/eidors/eidors_startup.m'); % Initialize EIDOR
 
@@ -65,7 +65,7 @@ functions = {'Step', ...                            1
             'Differential of a Gaussian (DoG)', ... 3
             'Modulated Gaussian (MG)', ...          4
             'Linear With Cut-Off'}; ...                5
-function_choice = 1; 
+function_choice = 2; 
 
 press = plain;
 press.elem_data = 1 + elem_select(press.fwd_model, apply_function((function_choice)));
@@ -142,7 +142,7 @@ else
     title({'Correlation Score'})
 end
 %% Plot different models
-% plot_fem_and_cross_section(mdl,functions);
+plot_fem_and_cross_section(mdl,functions);
 
 %% Function: Finding Best Shift
 function best_shift = find_best_shift(data_diff, sim_diff, shift_step, max_shifts)
@@ -165,23 +165,26 @@ end
 %% Function: Applying Selected Function to Model
 function select_fcn = apply_function(choice)
     centre = 1.8;
-    sigma = 1;
+    
 
     switch lower(choice)
         case 1      %"step"
             select_fcn = @(x, y, z) 0.5 * (y > centre) - 0.5 * (y <= centre);
         case 2      %"linear"
+            sigma = 3;
             select_fcn = @(x, y, z) (y - centre) / sigma;
         case 3      %"differential of a gaussian"
+            sigma = 0.4;
             select_fcn = @(x, y, z) -(y - centre) .* exp(-((y - centre).^2) / (2 * sigma^2)) / (sigma^2);
         case 4      %"modulated gaussian"
             sigma = 0.4;
             k = 5;
             select_fcn = @(x,y,z) exp(-(y - centre).^2 / (2 * sigma^2)) .*(cos(k * (y-centre)));
         case 5      %modulated difference of a gaussian
-            sigma = 0.2;
+            sigma = 2;
             k = 3;
-            select_fcn = @(x,y,z)(y>centre-k/2).*(y<centre+k/2).*(y-centre)/sigma;
+            % select_fcn = @(x,y,z) ((abs(y - centre) < k/2).* exp(-1 ./ (1 - ((2*(y - centre)/k).^2))) .* (1 + sigma * sin(pi*(y - centre)/k)) );
+            select_fcn = @(x, y, z) ( (abs(y - centre) < k/2) .* exp(-1 ./ (1 - ((2*(y - centre)/k).^2))) .* (1 + sigma * sin(pi*(y - centre)/k)) );
         otherwise
             error("Unknown function choice: %s", choice);
     end

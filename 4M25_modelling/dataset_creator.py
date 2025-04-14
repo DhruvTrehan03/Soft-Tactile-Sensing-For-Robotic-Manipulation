@@ -38,6 +38,16 @@ class EITDataset(Dataset):
         # Lists to hold data samples and labels
         self.samples = []  # each sample will be a 1024-dimensional vector
         self.labels = []   # labels: (shape, position, orientation)
+        
+        # find control file and extract the control data
+        control_file = [f for f in self.file_paths if 'Control' in f]
+        if control_file:
+            control_file = control_file[0]
+            mat = scipy.io.loadmat(control_file)
+            self.control_data = mat['plotthis_right']
+        else:
+            self.control_data = None
+            
 
         # Process each file
         for file in self.file_paths:
@@ -46,14 +56,14 @@ class EITDataset(Dataset):
             data = mat['plotthis_right']  # extract the 11x1024 matrix from the .mat file
             data = torch.tensor(data, dtype=torch.float)
             
+            # If control data is available, subtract it from the current data
+            if self.control_data is not None:
+                data = data - torch.tensor(self.control_data, dtype=torch.float)
+            
             # Extract label information from the filename
             # Example filename: "cube_2_1_1.mat" => shape: "cube", position: 2, orientation: 1, trial: 1
             base = os.path.splitext(os.path.basename(file))[0]
-            parts = base.split('_')
-            
-            # ignore control data
-            if parts[1] == 'Control':
-                continue
+            parts = base.split('_')        
             
             shape_str = parts[1]
             position = int(parts[2]) -1 # subtract 1 to make it 0-based

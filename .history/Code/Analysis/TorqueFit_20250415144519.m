@@ -22,7 +22,7 @@ config.select_fcns = {
 };
 
 % Selected function index
-config.selected_fcn_idx = 5; % Default to the first function
+config.selected_fcn_idx = 1; % Default to the first function
 
 %% Main Script
 % Toggle Settings
@@ -168,8 +168,8 @@ function analyze_correlation()
     % Base directory and parameters
     base_dir = 'SavedVariables';
     diameters = {'10mm', '20mm', '30mm', '40mm'};
-    param_ranges.k = linspace(0.1, 4, 20);
-    param_ranges.sigma = linspace(0.1, 2, 10);
+    param_ranges.k = linspace(0.8, 1.1, 20);
+    param_ranges.sigma = linspace(2, 5, 10);
     smooth_coeff = 50;
 
     % Analyze correlation for all diameters
@@ -253,7 +253,7 @@ function analyze_diameters(base_dir, diameters, param_ranges, fit_flag, plot_fla
     grid on;
 end
 
-function correlation_matrix = compute_correlations(data_diff, mdl, stim, param_ranges, smooth_coeff)
+function compute_correlations(data_diff, mdl, stim, param_ranges, smooth_coeff)
     % COMPUTE_CORRELATIONS: Compute correlation matrix for given data and parameter ranges.
     global config;
     select_fcn_template = config.select_fcns{config.selected_fcn_idx};
@@ -443,7 +443,7 @@ function [best_params, best_corr, fit_models] = optimize_and_fit(select_fcn_temp
     end
 
     % Fit parameters to torque values (if applicable)
-    if fit && ~isempty(torque_values)
+    if fit && !isempty(torque_values)
         fit_models.k = fit(torque_values, best_params.k, 'poly3');
         fit_models.sigma = fit(torque_values, best_params.sigma, 'poly3');
     end

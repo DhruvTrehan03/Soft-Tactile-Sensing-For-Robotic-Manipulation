@@ -12,7 +12,7 @@ show_first_three_subplots = 0; % Set to false to hide first 3 subplots
 if initialise
     clear
     load_data = 1;       % Set to true to reload data
-    find_shift = 1;      % Set to true to find the best shift
+    find_shift = 0;      % Set to true to find the best shift
     show_first_three_subplots = 1; % Set to false to hide first 3 subplots
     run('Source/eidors-v3.11-ng/eidors/eidors_startup.m'); % Initialize EIDOR
 
@@ -65,19 +65,23 @@ functions = {'Step', ...                            1
             'Differential of a Gaussian (DoG)', ... 3
             'Modulated Gaussian (MG)', ...          4
             'Linear With Cut-Off'}; ...                5
-function_choice = 2; 
+function_choice = 5; 
+%% Plot different models
+plot_fem_and_cross_section(mdl,functions);
 
 press = plain;
-press.elem_data = 1 + elem_select(press.fwd_model, apply_function((function_choice)));
+func = apply_function((function_choice));
+press.elem_data = 1 + elem_select(press.fwd_model, func);
 press.fwd_model.stimulation = stim;
 % show_fem(press);
-Model_Compare = figure("Name", 'Model Comparison');
+
 %% Plot Results
 plain_data = fwd_solve(plain);
 press_data = fwd_solve(press);
 sim_diff = abs(press_data.meas - plain_data.meas);
 sim_diff = normalize(sim_diff);
 [correlation,env1,env2] = envelope_correlation(data_diff, sim_diff);
+
 
 
 subplot_idx = 1;
@@ -141,8 +145,7 @@ else
     axis off;
     title({'Correlation Score'})
 end
-%% Plot different models
-plot_fem_and_cross_section(mdl,functions);
+
 
 %% Function: Finding Best Shift
 function best_shift = find_best_shift(data_diff, sim_diff, shift_step, max_shifts)
@@ -175,16 +178,21 @@ function select_fcn = apply_function(choice)
             select_fcn = @(x, y, z) (y - centre) / sigma;
         case 3      %"differential of a gaussian"
             sigma = 0.4;
-            select_fcn = @(x, y, z) -(y - centre) .* exp(-((y - centre).^2) / (2 * sigma^2)) / (sigma^2);
+            select_fcn = @(x, y, z) -(centre-y) .* exp(-((centre-y).^2) / (2 * sigma^2)) / (sigma^2);
         case 4      %"modulated gaussian"
             sigma = 0.4;
             k = 5;
             select_fcn = @(x,y,z) exp(-(y - centre).^2 / (2 * sigma^2)) .*(cos(k * (y-centre)));
         case 5      %modulated difference of a gaussian
-            sigma = 2;
+            sigma = 4;
             k = 3;
             % select_fcn = @(x,y,z) ((abs(y - centre) < k/2).* exp(-1 ./ (1 - ((2*(y - centre)/k).^2))) .* (1 + sigma * sin(pi*(y - centre)/k)) );
-            select_fcn = @(x, y, z) ( (abs(y - centre) < k/2) .* exp(-1 ./ (1 - ((2*(y - centre)/k).^2))) .* (1 + sigma * sin(pi*(y - centre)/k)) );
+select_fcn = @(x, y, z) ( (abs(y-centre) < k/2) ...
+    .* (0.5 * (1 + cos((2*pi/k) * (y-centre)))) ...
+    .* (1 + sigma * sin(pi*(y-centre)/k)) );
+
+
+
         otherwise
             error("Unknown function choice: %s", choice);
     end
@@ -234,6 +242,7 @@ function plot_fem_and_cross_section(mdl, function_choices)
         grid on;
         xlim([0,3.6]);
     end
+    figure();
 end
 
 

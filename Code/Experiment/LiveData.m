@@ -18,9 +18,7 @@ write(truth, "y", "string");
 if init_right, write(right, "y", "string"); end
 
 % Get the current time to create unique file names (minute-based)
-current_time = datetime('now', 'Format', 'yyyy-MM-dd_HH-mm');
-time_str = char(current_time);
-save_dir = fullfile('C:\Users\dhruv\Soft-Tactile-Sensing-For-Robotic-Manipulation\Readings\40mm\', time_str);
+save_dir = fullfile('C:\Users\dhruv\Soft-Tactile-Sensing-For-Robotic-Manipulation\Readings\40mm');
 mkdir(save_dir)
 
 % Get total runtime in seconds instead of number of readings
@@ -59,9 +57,13 @@ while toc < runtime  % Run until the set time is reached
 end
 
 % Save data
-save(fullfile(save_dir, '10mm_truth.mat'), 'plotthis_truth');
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+save(fullfile(save_dir, '40mm_2_truth.mat'), 'plotthis_truth');
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 if init_right && ~isempty(plotthis_right)
-    save(fullfile(save_dir, '10mm_right.mat'), 'plotthis_right');
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    save(fullfile(save_dir, '40mm_2_right.mat'), 'plotthis_right');
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 end
 
 % Close serial ports
@@ -69,3 +71,5 @@ clear truth;
 if init_right, clear right; end
 
 disp('Data collection complete.');
+figure();
+subplot(2,1,1);plot(plotthis_truth(:,1),plotthis_truth(:,2));subplot(2,1,2);plot(mean(plotthis_right(:,2:end),2))

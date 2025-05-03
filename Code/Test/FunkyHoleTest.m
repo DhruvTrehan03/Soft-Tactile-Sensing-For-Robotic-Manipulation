@@ -37,7 +37,7 @@
 
 
 %%
-% MultiSelectFEM_FunkyPerms();
+MultiSelectFEM_FunkyPerms();
 % compareVoltageSimilarities();
 % plotSimilarityMatrixByShape();
 %plotNormalizedSimilarityMatrixByShape();
@@ -416,24 +416,27 @@ end
         % voltage_diff = perturbed_data.meas-plain_data.meas; %electrode voltages
         % Save the voltage data for this permutation in a .mat file.
         save(fullfile(outputFolder, [name_str, '.mat']), 'voltage_diff','perturbed_volts');
+        
+        % Define visualization options
+        options = struct();
+        options.edge.significant.width = 0; % Disable significant edges
 
         % Optional: Plot and save the figure.
         figure;
-        subplot(1,3,1);
-        show_fem(plain);
-        title('Base FEM');
 
-        subplot(1,3,2);
-        show_fem(perturbed);
+
+        subplot(1,2,1);
+        g_patch = show_fem_enhanced(perturbed);
         title(name_str);
 
-        subplot(1,3,3);
+
+        subplot(1,2,2);
         temp = perturbed_volts;
         temp.node_data = voltage_diff;
-        show_fem_enhanced(temp);
-        title('Voltage Difference');
-        sgtitle(name_str);
-
+        % Plot the FEM and capture the handle
+        h_patch = show_fem_enhanced(temp);
+        title("Voltage Difference")
+        
         % Save the current figure as a PNG image.
         saveas(gcf, fullfile(outputFolder, [name_str, '.png']));
         exportgraphics(gcf,fullfile(outputFolder, [name_str, '.pdf']),'ContentType', 'Vector')

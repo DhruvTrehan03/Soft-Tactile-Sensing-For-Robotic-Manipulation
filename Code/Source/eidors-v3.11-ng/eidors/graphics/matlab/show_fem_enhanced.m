@@ -569,6 +569,9 @@ function hh = draw_triangles(faces, vertices, color_data, alpha_data, ...
                'FaceColor', face_color, 'FaceAlpha', face_alpha, ...
                'EdgeColor', edge_color, 'FaceLighting', 'flat', ...
                'LineWidth', edge_width);
+    for hp = hh
+        set(hp, 'EdgeColor', 'none'); % Hide edges
+    end
 
 function colour = electr_colour(elec, e, colormap_width)
     if isfield(elec, 'colour')

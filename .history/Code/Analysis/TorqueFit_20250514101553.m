@@ -866,9 +866,9 @@ function fit_and_visualize(base_dir, diameters, mdl, stim, select_fcn, sigma_val
 
     % Find indices of existing sigma values in the new sigma_values array
     [~, existing_indices] = find(ismember(existing_sigma_values, sigma_values) == 1);
-    % disp([sigma_values]);
-    % disp([existing_sigma_values]);
-    % disp([existing_indices]);
+    disp([sigma_values]);
+    disp([existing_sigma_values]);
+    disp([existing_indices]);
 
     % Combine unique sigma values
     all_sigma_values = unique([existing_sigma_values, sigma_values]);

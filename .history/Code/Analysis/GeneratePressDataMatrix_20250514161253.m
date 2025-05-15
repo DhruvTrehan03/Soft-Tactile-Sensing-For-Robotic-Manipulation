@@ -1,0 +1,105 @@
+clear; close all; clc;
+
+if isempty(which('eidors_startup'))
+    run('Source/eidors-v3.11-ng/eidors/eidors_startup.m'); % Initialize EIDORS
+end
+
+load("Analysis\ModelGen.mat", "mdl", "stim", "plain");
+plain_data = fwd_solve(plain);
+% Define parameters
+base_dir = 'SavedVariables\Diameter_Slices';
+k_values = linspace(0.1, 4.4, 100); % Define k values for the modulation
+sigma_values = linspace(0.1, 4.4, 100);
+
+    % Define different select_fcn options
+select_fcns = @( y, s,k) -(y - k) .* exp(-((y - k).^2) / (2 * s^2)) / (s^2);     % Difference of Gaussians
+
+% sim_data_matrix = GenerateDataMatrix(mdl, stim, plain, plain_data, select_fcns, k_values, sigma_values);
+load('sim_data_matrix.mat', 'sim_data_matrix');
+disp(size(sim_data_matrix));
+% Visualize the sim_data_matrix
+VisualizeSimDataMatrix(sim_data_matrix, k_values, sigma_values);
+figure();
+plot(squeeze(sim_data_matrix(1,1,:)));
+title('Simulated Data for k=0.1, σ=0.1');
+
+function sim_data_matrix = GenerateDataMatrix(mdl, stim, plain,plain_data, select_fcn, k_values, sigma_values)
+    % GENERATEPRESSDATAMATRIX: Generates a matrix of press_data over k and sigma.
+    % Inputs:
+    %   mdl         - Model structure
+    %   stim        - Stimulation structure
+    %   plain       - Plain model
+    %   select_fcn  - Selection function
+    %   k_values    - Array of k values
+    %   sigma_values- Array of sigma values
+    %   centre      - Centre value for the select function
+    % Outputs:
+    %   press_data_matrix - 3D matrix of press_data (k x sigma x measurements)
+
+    % Initialize the matrix to store press_data
+    num_k = length(k_values);
+    num_sigma = length(sigma_values);
+    num_meas = 896; % Number of measurements
+    sim_data_matrix = zeros(num_k, num_sigma, num_meas);
+
+    % Loop through k and sigma values
+    for i = 1:num_k
+        k = k_values(i);
+        for j = 1:num_sigma
+            sigma = sigma_values(j);
+
+            % Update the plain model with the select function
+            press = plain;
+            press.elem_data = 1 + elem_select(press.fwd_model, ...
+                @(x, y, z) select_fcn(y, sigma, k));
+            press.fwd_model.stimulation = stim;
+
+            % Solve the forward model
+            press_data = fwd_solve(press);
+
+            % Store the measurement data
+            sim_data_matrix(i, j, :) = press_data.meas-plain_data.meas; % Subtract the plain data to get the difference
+        end
+    end
+
+    % Save the matrix to a file
+    save('sim_data_matrix.mat', 'sim_data_matrix', 'k_values', 'sigma_values');
+    disp('Press data matrix saved to sim_data_matrix.mat');
+end
+
+function VisualizeSimDataMatrix(sim_data_matrix, k_values, sigma_values)
+    % VISUALIZESIMDATAMATRIX: Displays the sim_data_matrix in a grid format.
+    % Inputs:
+    %   sim_data_matrix - 3D matrix of press_data (k x sigma x measurements)
+    %   k_values        - Array of k values
+    %   sigma_values    - Array of sigma values
+
+    % Create a tiled layout for the plots
+    figure;
+    len = 1;
+    tiledlayout(len, len, 'TileSpacing', 'compact', 'Padding', 'compact'); % Adjust grid size as needed
+
+    % Loop through the grid
+    for i = 1:len
+        for j = 1:len 
+            % Get the corresponding k and sigma indices
+            k_idx = round(linspace(1, length(k_values), len));
+            sigma_idx = round(linspace(1, length(sigma_values), len));
+            
+            % Extract the data for the current cell
+            sim_diff = squeeze(sim_data_matrix(k_idx(i), sigma_idx(j), :));
+            
+            % Create a subplot for the current cell
+            nexttile;
+            plot(sim_diff);
+            % title(sprintf('k=%.2f, σ=%.2f', k_values(k_idx(i)), sigma_values(sigma_idx(j))));
+            axis tight;
+            set(gca, 'XTick', [], 'YTick', []); % Remove ticks for clarity
+        end
+    end
+
+    % Add overall labels
+    xlabel(tiledlayout, 'Sigma (σ)');
+    ylabel(tiledlayout, 'K');
+    sgtitle('Simulated Data Matrix Visualization');
+end

@@ -48,11 +48,14 @@ function SFit(base_dir, diameters, mdl, stim,plain, plain_data, select_fcn, sigm
     % Initialize storage for new correlations
     new_correlations = zeros(length(diameters), length(new_sigma_values));
 
-    % Initialize figures outside the loops
-    env_fig = figure('Name', 'Envelope Plot', 'NumberTitle', 'off','Position', [600, 100, 480, 360]);
-    fem_fig = figure('Name', 'FEM Plot', 'NumberTitle', 'off','Position', [100, 100, 480, 360]);
+    % Load the precomputed matrix for varying k and sigma
+    load('sim_data_matrix.mat', 'sim_data_matrix','k_values','sigma_values');
+    % Initialize heatmap storage for averaging
+    average_heatmap_data = zeros(length(k_values), length(sigma_values), length(diameters));
 
     % Loop through each diameter
+    maxima_k = zeros(1, length(diameters));
+    maxima_sigma = zeros(1, length(diameters));
     for d = 1:length(diameters)
         diameter = diameters{d};
         data_dir = fullfile(base_dir);
@@ -60,41 +63,73 @@ function SFit(base_dir, diameters, mdl, stim,plain, plain_data, select_fcn, sigm
         % Get list of data files
         files = dir(fullfile(data_dir, sprintf('%dmm_Data_*.mat', str2double(diameter(1:end-2)))));
 
+        % Initialize heatmap accumulator and file counter
+        heatmap_accumulator = zeros(length(k_values), length(sigma_values));
+        file_count = 0;
+        progress = waitbar(0, sprintf('Processing %s ', diameter));
         for i = 1:length(files)
             % Load and transpose data
             file_path = fullfile(files(i).folder, files(i).name);
             data_diff = load(file_path).data_diff';
             data_diff = smoothdata(data_diff, "gaussian", 9); % Smooth data_diff
 
-            % Initialize progress bar
-            progress_bar = waitbar(0, sprintf('Processing Diameter: %s, File: %d/%d', diameter, i, length(files)),"Position", [250, 450, 300, 60]);
+            % Compute cross-correlation for each k and sigma
+            for k_idx = 1:length(k_values)
+                for sigma_idx = 1:length(sigma_values)
+                    % Update progress bar
+                    waitbar((i-1)*length(k_values)*length(sigma_values) + (k_idx-1)*length(sigma_values) + sigma_idx / (length(files)*length(k_values)*length(sigma_values)), progress, sprintf('Processing %s: k = %.2f, sigma = %.2f', diameter, k_values(k_idx), sigma_values(sigma_idx)));
+                    % Extract precomputed data for current k and sigma
+                    sim_data = squeeze(sim_data_matrix(k_idx, sigma_idx, :));
 
-            for j = 1:length(new_sigma_values)
-                sigma = new_sigma_values(j);
-
-                press = plain;
-                press.elem_data = 1 + elem_select(press.fwd_model, @(x, y, z) exp(-(y - 1.8).^2 / (2 * sigma^2)));
-                press.fwd_model.stimulation = stim;
-
-                % Refresh FEM plot
-                figure(fem_fig);
-                clf(fem_fig);
-                show_fem(press);
-
-                % Compute simulated difference
-                press_data = fwd_solve(press);
-                sim_diff = abs(press_data.meas - plain_data.meas);
-                % Compute correlation
-                new_correlations(d, j) = envelope_correlation(data_diff, sim_diff, smooth_coeff,env_fig, true); % Set to true to ignore shifts
-
-                % Update progress bar
-                waitbar(j / length(new_sigma_values), progress_bar);
+                    % Compute cross-correlation
+                    [cross_corr, ~] = xcorr(data_diff, sim_data, 'coeff');
+                    heatmap_accumulator(k_idx, sigma_idx) = heatmap_accumulator(k_idx, sigma_idx) + max(cross_corr); % Accumulate maximum correlation
+                end
             end
 
-            % Close progress bar
-            close(progress_bar);
+
+            % Increment file counter
+            file_count = file_count + 1;
         end
+        close(progress);
+        % Compute the average heatmap for the current diameter
+        average_heatmap_data(:, :, d) = heatmap_accumulator / file_count;
+
+        % Generate heatmap for the current diameter
+        figure;
+        imagesc(sigma_values, k_values, average_heatmap_data(:, :, d));
+        colorbar;
+        xlabel('Sigma');
+        ylabel('k');
+        title(sprintf('Average Cross-Correlation Heatmap for Diameter: %s', diameter));
+
+        % Find the global maxima
+        [max_val, max_idx] = max(average_heatmap_data(:, :, d), [], 'all', 'linear');
+        [max_k_idx, max_sigma_idx] = ind2sub(size(average_heatmap_data(:, :, d)), max_idx);
+
+        % Store the maxima for final plot
+        maxima_k(d) = k_values(max_k_idx);
+        maxima_sigma(d) = sigma_values(max_sigma_idx);
+
+        % Add a cross marker at the global maxima
+        hold on;
+        plot(sigma_values(max_sigma_idx), k_values(max_k_idx), 'rx', 'MarkerSize', 10, 'LineWidth', 2);
+        hold off;
     end
+
+    % Final plot of k vs sigma with maxima for each diameter
+    figure;
+    hold on;
+    for d = 1:length(diameters)
+        scatter(maxima_sigma(d), maxima_k(d), 'o', 'DisplayName', sprintf('%s Diameter', diameters{d}));
+    end
+    hold off;
+    xlabel('Sigma');
+    ylabel('k');
+    title('Maxima of k vs Sigma for Each Diameter');
+    xticks(sigma_values);
+    grid on;
+    legend('Location', 'best');
 
     % Update the correlation matrix
     all_sigma_values = unique([existing_sigma_values, sigma_values]);

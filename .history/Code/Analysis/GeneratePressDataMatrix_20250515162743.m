@@ -8,8 +8,8 @@ load("Analysis\ModelGen.mat", "mdl", "stim", "plain");
 plain_data = fwd_solve(plain);
 % Define parameters
 base_dir = 'SavedVariables\Diameter_Slices';
-k_values = linspace(2.9, 3.6, 1000); % Define k values for the modulation
-sigma_values = linspace(1, 2.2, 1000);
+k_values = linspace(2.9, 3.6, 10); % Define k values for the modulation
+sigma_values = linspace(1.2, 2, 10);
 
     % Define different select_fcn options
 select_fcns = @( y, s,k) -(y - k) .* exp(-((y - k).^2) / (2 * s^2)) / (s^2);     % Difference of Gaussians
@@ -19,7 +19,7 @@ sim_data_matrix = GenerateDataMatrix(mdl, stim, plain, plain_data, select_fcns, 
 % disp(size(sim_data_matrix));
 % Visualize the sim_data_matrix
 VisualizeSimDataMatrix(sim_data_matrix, k_values, sigma_values);
-
+run(Analysis\TorqueAnalysis.m);
 
 function sim_data_matrix = GenerateDataMatrix(mdl, stim, plain,plain_data, select_fcn, k_values, sigma_values)
     % GENERATEPRESSDATAMATRIX: Generates a matrix of press_data over k and sigma.
@@ -46,7 +46,7 @@ function sim_data_matrix = GenerateDataMatrix(mdl, stim, plain,plain_data, selec
         k = k_values(i);
         for j = 1:num_sigma
             % Update progress bar
-            waitbar(((i-1)*num_sigma+j)/(num_k*num_sigma), progress,'Generating Simulated Data Matrix...');
+            waitbar((i-1)*num_sigma+j/(num_k*num_sigma), progress,'Generating Simulated Data Matrix...');
             sigma = sigma_values(j);
 
             % Update the plain model with the select function

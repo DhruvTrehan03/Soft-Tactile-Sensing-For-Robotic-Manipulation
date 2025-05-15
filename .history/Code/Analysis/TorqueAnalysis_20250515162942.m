@@ -14,7 +14,7 @@ function TFit(base_dir)
     maxima_sigma = zeros(1, length(files));
     heatmaps = cell(1, 10);
     % Load the precomputed matrix for varying k and sigma
-    load('sim_data_matrix_focused.mat', 'sim_data_matrix', 'k_values', 'sigma_values');
+    load('..\sim_data_matrix_focused.mat', 'sim_data_matrix', 'k_values', 'sigma_values');
     waitbar_handle = waitbar(0, 'Processing Data Slices...');
     % Loop through each data slice
     for i = 1:length(files)

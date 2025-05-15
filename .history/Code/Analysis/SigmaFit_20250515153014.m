@@ -80,7 +80,7 @@ function SFit(base_dir, diameters, mdl, stim,plain, plain_data, select_fcn, sigm
             for k_idx = 1:length(k_values)
                 for sigma_idx = 1:length(sigma_values)
                     % Update progress bar
-                    waitbar(((i-1)*length(k_values)*length(sigma_values) + (k_idx-1)*length(sigma_values) + sigma_idx) / (length(files)*length(k_values)*length(sigma_values)), progress, sprintf('Processing %s: k = %.2f, sigma = %.2f', diameter, k_values(k_idx), sigma_values(sigma_idx)));
+                    waitbar((i-1)*length(k_values)*length(sigma_values) + (k_idx-1)*length(sigma_values) + sigma_idx / (length(files)*length(k_values)*length(sigma_values)), progress, sprintf('Processing %s: k = %.2f, sigma = %.2f', diameter, k_values(k_idx), sigma_values(sigma_idx)));
                     % Extract precomputed data for current k and sigma
                     sim_data = squeeze(sim_data_matrix(k_idx, sigma_idx, :));
 
@@ -143,17 +143,6 @@ function SFit(base_dir, diameters, mdl, stim,plain, plain_data, select_fcn, sigm
     grid on;
     legend('Location', 'best');
 
-    % Plot the 3D scatter plot
-    figure;
-    scatter3(maxima_matrix(:, 2), maxima_matrix(:, 3), maxima_matrix(:, 1), 50, maxima_matrix(:, 1), 'filled');
-    xlabel('k');
-    ylabel('Sigma');
-    zlabel('Diameter');
-    title('3D Scatter Plot of Diameter vs k vs Sigma');
-    colorbar;
-    grid on;
-
-
     % Update the correlation matrix
     all_sigma_values = unique([existing_sigma_values, sigma_values]);
     updated_correlation_matrix = zeros(length(diameters), length(all_sigma_values));
@@ -180,7 +169,15 @@ function SFit(base_dir, diameters, mdl, stim,plain, plain_data, select_fcn, sigm
     legend('Location', 'best');
     grid on;
 
-
+    % Plot the 3D scatter plot
+    figure;
+    scatter3(maxima_matrix(:, 2), maxima_matrix(:, 3), maxima_matrix(:, 1), 50, maxima_matrix(:, 1), 'filled');
+    xlabel('k');
+    ylabel('Sigma');
+    zlabel('Diameter');
+    title('3D Scatter Plot of Diameter vs k vs Sigma');
+    colorbar;
+    grid on;
 
     disp("Do you want to save the correlation matrix? (y/n)");
     answer = input('', 's');
